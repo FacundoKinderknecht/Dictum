@@ -1,10 +1,9 @@
 import type { ImagenInforme } from "../types";
 
-const _rawBase = import.meta.env.VITE_API_URL ?? "";
-const API_BASE =
-  location.protocol === "https:" && _rawBase.startsWith("http:")
-    ? "https:" + _rawBase.slice(5)
-    : _rawBase;
+const _rawBase = (import.meta.env.VITE_API_URL ?? "").trim();
+const API_BASE = _rawBase.startsWith("http://") && !_rawBase.includes("localhost")
+  ? "https://" + _rawBase.slice(7)
+  : _rawBase;
 
 // Token getter inyectado desde App.tsx (igual que client.ts)
 let _getToken: () => string | null = () => null;

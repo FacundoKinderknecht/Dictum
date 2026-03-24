@@ -5,12 +5,11 @@
  * - El token se obtiene de un getter inyectado desde useAuth.
  */
 
-const _rawUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
-// Auto-upgrade http→https cuando la app corre en HTTPS (evita Mixed Content)
-const API_URL =
-  location.protocol === "https:" && _rawUrl.startsWith("http:")
-    ? "https:" + _rawUrl.slice(5)
-    : _rawUrl;
+const _rawUrl = (import.meta.env.VITE_API_URL ?? "http://localhost:8000").trim();
+// Forzar HTTPS en URLs que no sean localhost (evita Mixed Content en Vercel)
+const API_URL = _rawUrl.startsWith("http://") && !_rawUrl.includes("localhost")
+  ? "https://" + _rawUrl.slice(7)
+  : _rawUrl;
 
 export class ApiError extends Error {
   constructor(
