@@ -14,6 +14,8 @@ export const informesApi = {
 
   finalizar: (id: string) => api.post<Informe>(`/informes/${id}/finalizar`),
 
+  eliminar: (id: string) => api.delete<void>(`/informes/${id}`),
+
   // Secretaria
   listarFinalizados: () => api.get<InformeConPaciente[]>("/informes/finalizados/lista"),
 

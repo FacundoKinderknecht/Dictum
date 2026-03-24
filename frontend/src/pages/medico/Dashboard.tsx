@@ -1,16 +1,19 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
-import { useMisInformes } from "../../hooks/useInformes";
+import { useMisInformes, useEliminarInforme } from "../../hooks/useInformes";
 import { informesApi } from "../../api/informes";
+import AppHeader from "../../components/ui/AppHeader";
 import Button from "../../components/ui/Button";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import type { InformeConPaciente } from "../../types";
 
 export default function MedicoDashboard() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const { data: informes, isLoading, error } = useMisInformes();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const eliminarMutation = useEliminarInforme();
 
   async function handleDescargarPDF(informe: InformeConPaciente) {
     setDownloadingId(informe.id);
@@ -29,26 +32,29 @@ export default function MedicoDashboard() {
     }
   }
 
+  function handleEliminar(informe: InformeConPaciente) {
+    if (!confirm(`¿Eliminar el informe borrador de ${informe.paciente_apellido}, ${informe.paciente_nombre}?`)) return;
+    eliminarMutation.mutate(informe.id);
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-800">Mis Informes</h1>
-          <p className="text-sm text-gray-500">Dr/a. {user?.apellido}, {user?.nombre}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link to="/medico/pacientes">
-            <Button variant="secondary" size="sm">Pacientes</Button>
-          </Link>
-          <Link to="/medico/nuevo-informe">
-            <Button size="sm">+ Nuevo informe</Button>
-          </Link>
-          <Button variant="ghost" size="sm" onClick={logout}>Salir</Button>
-        </div>
-      </header>
+      <AppHeader
+        title="Mis Informes"
+        subtitle={`Dr/a. ${user?.apellido}, ${user?.nombre}`}
+        actions={
+          <>
+            <Link to="/medico/pacientes">
+              <Button variant="secondary" size="sm">Pacientes</Button>
+            </Link>
+            <Link to="/medico/nuevo-informe">
+              <Button size="sm">+ Nuevo informe</Button>
+            </Link>
+            <Button variant="ghost" size="sm" onClick={logout}>Salir</Button>
+          </>
+        }
+      />
 
-      {/* Content */}
       <main className="max-w-5xl mx-auto px-6 py-8">
         {isLoading && <LoadingSpinner />}
 
@@ -66,64 +72,75 @@ export default function MedicoDashboard() {
         )}
 
         {informes && informes.length > 0 && (
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-gray-200 text-left text-gray-500">
-                <th className="pb-2 pr-4 font-medium">Paciente</th>
-                <th className="pb-2 pr-4 font-medium">Tipo de estudio</th>
-                <th className="pb-2 pr-4 font-medium">Fecha</th>
-                <th className="pb-2 pr-4 font-medium">Estado</th>
-                <th className="pb-2 font-medium">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {informes.map((inf) => (
-                <tr key={inf.id} className="border-b border-gray-100 hover:bg-white">
-                  <td className="py-3 pr-4 font-medium text-gray-800">
-                    {inf.paciente_apellido}, {inf.paciente_nombre}
-                    <span className="block text-xs text-gray-400 font-normal">
-                      DNI {inf.paciente_dni}
-                    </span>
-                  </td>
-                  <td className="py-3 pr-4 text-gray-600">{inf.tipo_estudio}</td>
-                  <td className="py-3 pr-4 text-gray-600">
-                    {new Date(inf.fecha_estudio).toLocaleDateString("es-AR")}
-                  </td>
-                  <td className="py-3 pr-4">
-                    <span
-                      className={[
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
+                  <th className="px-4 py-3 font-medium">Paciente</th>
+                  <th className="px-4 py-3 font-medium">Tipo de estudio</th>
+                  <th className="px-4 py-3 font-medium">Fecha</th>
+                  <th className="px-4 py-3 font-medium">Estado</th>
+                  <th className="px-4 py-3 font-medium">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {informes.map((inf) => (
+                  <tr key={inf.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 font-medium text-gray-800">
+                      {inf.paciente_apellido}, {inf.paciente_nombre}
+                      <span className="block text-xs text-gray-400 font-normal">DNI {inf.paciente_dni}</span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{inf.tipo_estudio}</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                      {new Date(inf.fecha_estudio + "T00:00:00").toLocaleDateString("es-AR")}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={[
                         "inline-block px-2 py-0.5 rounded text-xs font-medium",
                         inf.estado === "finalizado"
                           ? "bg-green-100 text-green-700"
                           : "bg-yellow-100 text-yellow-700",
-                      ].join(" ")}
-                    >
-                      {inf.estado}
-                    </span>
-                  </td>
-                  <td className="py-3">
-                    <div className="flex items-center gap-2">
-                      {inf.estado === "borrador" && (
-                        <Link to={`/medico/editar-informe/${inf.id}`}>
-                          <Button variant="ghost" size="sm">Editar</Button>
-                        </Link>
-                      )}
-                      {inf.estado === "finalizado" && (
+                      ].join(" ")}>
+                        {inf.estado}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          loading={downloadingId === inf.id}
-                          onClick={() => handleDescargarPDF(inf)}
+                          onClick={() => navigate(`/medico/editar-informe/${inf.id}`)}
                         >
-                          PDF
+                          {inf.estado === "borrador" ? "Editar" : "Ver"}
                         </Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                        {inf.estado === "finalizado" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            loading={downloadingId === inf.id}
+                            onClick={() => handleDescargarPDF(inf)}
+                          >
+                            PDF
+                          </Button>
+                        )}
+                        {inf.estado === "borrador" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={eliminarMutation.isPending}
+                            onClick={() => handleEliminar(inf)}
+                            className="text-red-600 hover:bg-red-50"
+                          >
+                            Eliminar
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </main>
     </div>

@@ -59,3 +59,11 @@ export function useFinalizarInforme() {
     },
   });
 }
+
+export function useEliminarInforme() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => informesApi.eliminar(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: INFORMES_KEYS.misInformes }),
+  });
+}

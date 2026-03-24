@@ -1,20 +1,16 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from app.dependencies import get_client_ip, get_current_user, get_supabase_for_user
 from app.schemas.usuario import LoginRequest, LoginResponse, RefreshRequest
 from app.services import audit_service, auth_service
 
 logger = logging.getLogger(__name__)
-limiter = Limiter(key_func=get_remote_address)
 router = APIRouter()
 
 
 @router.post("/login", response_model=LoginResponse)
-@limiter.limit("5/15minutes")
 def login(request: Request, body: LoginRequest) -> LoginResponse:
     """Autentica al usuario y retorna el JWT.
 
@@ -60,6 +56,7 @@ def login(request: Request, body: LoginRequest) -> LoginResponse:
 
     return LoginResponse(
         access_token=session["access_token"],
+        refresh_token=session.get("refresh_token"),
         expires_in=session["expires_in"],
         rol=profile["rol"],
         nombre=profile["nombre"],
@@ -115,6 +112,7 @@ def refresh(body: RefreshRequest) -> LoginResponse:
 
     return LoginResponse(
         access_token=session["access_token"],
+        refresh_token=session.get("refresh_token"),
         expires_in=session["expires_in"],
         rol=profile["rol"],
         nombre=profile["nombre"],

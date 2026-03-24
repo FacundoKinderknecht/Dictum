@@ -77,6 +77,9 @@ export const api = {
       body: body !== undefined ? JSON.stringify(body) : undefined,
     }),
 
+  delete: <T>(path: string) =>
+    request<T>(path, { method: "DELETE" }),
+
   /** Para descargas de archivos binarios (PDF). */
   getBlob: async (path: string): Promise<Blob> => {
     const token = _getToken?.();

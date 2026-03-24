@@ -185,6 +185,34 @@ def finalizar_informe(
     return result.data[0]
 
 
+@router.delete("/{informe_id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_informe(
+    request: Request,
+    informe_id: str,
+    current_user: dict = Depends(_medico),
+) -> None:
+    """Elimina un informe en borrador. Los finalizados son inmutables."""
+    client = get_supabase_for_user(current_user["token"])
+    informe = get_informe_or_404(client, informe_id, current_user["id"])
+    assert_borrador(informe)
+
+    try:
+        client.table("informes").delete().eq("id", informe_id).execute()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al eliminar el informe",
+        )
+
+    audit_service.log_audit(
+        usuario_id=current_user["id"],
+        accion=audit_service.ELIMINAR_INFORME,
+        tabla_afectada="informes",
+        registro_id=informe_id,
+        ip_address=get_client_ip(request),
+    )
+
+
 # ── Rutas de la secretaria ────────────────────────────────────────────────────
 
 @router.get("/finalizados/lista", response_model=list[InformeConPaciente])
