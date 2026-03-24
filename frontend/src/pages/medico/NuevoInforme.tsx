@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { pacientesApi } from "../../api/pacientes";
-import { informesApi } from "../../api/informes";
 import { useCrearInforme } from "../../hooks/useInformes";
 import InformeForm from "../../components/InformeForm";
 import AppHeader from "../../components/ui/AppHeader";
@@ -47,20 +46,10 @@ export default function NuevoInforme() {
     setError(null);
     try {
       const informe = await crearMutation.mutateAsync(data as InformeCreate);
+      // Siempre navegar a EditarInforme para poder subir imágenes antes de finalizar
       navigate(`/medico/editar-informe/${informe.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al guardar");
-    }
-  }
-
-  async function handleFinalizar(data: InformeCreate | InformeUpdate) {
-    setError(null);
-    try {
-      const informe = await crearMutation.mutateAsync(data as InformeCreate);
-      await informesApi.finalizar(informe.id);
-      navigate("/medico/dashboard");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Error al finalizar");
     }
   }
 
@@ -141,7 +130,8 @@ export default function NuevoInforme() {
             <InformeForm
               paciente={pacienteSeleccionado}
               onGuardar={handleGuardar}
-              onFinalizar={handleFinalizar}
+              guardarLabel="Guardar y continuar"
+              showFinalizarButton={false}
               onCancel={() => navigate(-1)}
               isSubmitting={isSubmitting}
             />

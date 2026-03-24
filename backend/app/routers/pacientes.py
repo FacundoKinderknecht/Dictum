@@ -148,11 +148,18 @@ def eliminar_paciente(
     paciente_id: str,
     current_user: dict = Depends(_medico),
 ) -> None:
-    """Elimina un paciente. Falla si tiene informes asociados."""
+    """Elimina un paciente. Usa admin client para bypassear RLS."""
+    from app.dependencies import get_admin_client
+
+    # Verificar que el paciente existe con el cliente del usuario (respeta RLS de lectura)
     client = get_supabase_for_user(current_user["token"])
+    existing = client.table("pacientes").select("id").eq("id", paciente_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente no encontrado")
 
     try:
-        client.table("pacientes").delete().eq("id", paciente_id).execute()
+        # Admin client para bypassear RLS en el DELETE
+        get_admin_client().table("pacientes").delete().eq("id", paciente_id).execute()
     except Exception as exc:
         logger.error("Error al eliminar paciente %s: %s", paciente_id, exc)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al eliminar")
