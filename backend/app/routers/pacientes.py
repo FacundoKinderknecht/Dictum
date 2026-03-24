@@ -111,21 +111,24 @@ def actualizar_paciente(
     body: PacienteUpdate,
     current_user: dict = Depends(_medico),
 ) -> PacienteOut:
-    """Actualiza datos de un paciente (excepto DNI)."""
+    """Actualiza datos de un paciente."""
     client = get_supabase_for_user(current_user["token"])
 
     changes = body.model_dump(exclude_none=True, mode="json")
     if not changes:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sin cambios")
 
+    # Si se cambia el DNI, verificar que no exista en otro paciente
+    if "dni" in changes:
+        existing = client.table("pacientes").select("id").eq("dni", changes["dni"]).neq("id", paciente_id).execute()
+        if existing.data:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Ya existe otro paciente con ese DNI")
+
     try:
-        result = client.table("pacientes").update(changes).eq("id", paciente_id).execute()
+        result = client.table("pacientes").update(changes).eq("id", paciente_id).select("*").execute()
     except Exception as exc:
         logger.error("Error al actualizar paciente %s: %s", paciente_id, exc)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al actualizar")
-
-    if not result.data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente no encontrado")
 
     audit_service.log_audit(
         usuario_id=current_user["id"],
@@ -137,3 +140,27 @@ def actualizar_paciente(
     )
 
     return result.data[0]
+
+
+@router.delete("/{paciente_id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_paciente(
+    request: Request,
+    paciente_id: str,
+    current_user: dict = Depends(_medico),
+) -> None:
+    """Elimina un paciente. Falla si tiene informes asociados."""
+    client = get_supabase_for_user(current_user["token"])
+
+    try:
+        client.table("pacientes").delete().eq("id", paciente_id).execute()
+    except Exception as exc:
+        logger.error("Error al eliminar paciente %s: %s", paciente_id, exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al eliminar")
+
+    audit_service.log_audit(
+        usuario_id=current_user["id"],
+        accion=audit_service.ELIMINAR_PACIENTE,
+        tabla_afectada="pacientes",
+        registro_id=paciente_id,
+        ip_address=get_client_ip(request),
+    )

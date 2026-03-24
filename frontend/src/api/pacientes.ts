@@ -11,4 +11,6 @@ export const pacientesApi = {
 
   actualizar: (id: string, data: PacienteUpdate) =>
     api.put<Paciente>(`/pacientes/${id}`, data),
+
+  eliminar: (id: string) => api.delete<void>(`/pacientes/${id}`),
 };

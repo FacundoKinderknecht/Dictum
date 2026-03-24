@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 class PacienteUpdate(BaseModel):
     nombre: str | None = Field(default=None, min_length=1, max_length=100)
     apellido: str | None = Field(default=None, min_length=1, max_length=100)
+    dni: str | None = Field(default=None, min_length=6, max_length=15, pattern=r"^\d+$")
     fecha_nacimiento: date | None = None
     telefono: str | None = Field(default=None, max_length=30)
 

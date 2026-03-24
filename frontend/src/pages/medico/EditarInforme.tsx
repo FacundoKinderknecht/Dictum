@@ -20,6 +20,7 @@ export default function EditarInforme() {
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [deletingPath, setDeletingPath] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ url: string; nombre: string } | null>(null);
 
   const { data: informe, isLoading: loadingInforme } = useInforme(id ?? "");
   const { data: paciente, isLoading: loadingPaciente } = useQuery({
@@ -176,8 +177,13 @@ export default function EditarInforme() {
           {imagenes && imagenes.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {imagenes.map((img) => (
-                <div key={img.path} className="relative group rounded-lg overflow-hidden border border-gray-200">
-                  <img src={img.url} alt={img.nombre} className="w-full h-32 object-cover" />
+                <div key={img.path} className="relative group rounded-lg overflow-hidden border border-gray-200 cursor-pointer">
+                  <img
+                    src={img.url}
+                    alt={img.nombre}
+                    className="w-full h-32 object-cover"
+                    onClick={() => setLightbox({ url: img.url, nombre: img.nombre })}
+                  />
                   <button
                     onClick={() => handleEliminar(img.path, img.nombre)}
                     disabled={deletingPath === img.path}
@@ -188,6 +194,25 @@ export default function EditarInforme() {
                   <p className="text-xs text-gray-500 truncate px-2 py-1">{img.nombre}</p>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Lightbox */}
+          {lightbox && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+              onClick={() => setLightbox(null)}
+            >
+              <div className="relative max-w-4xl max-h-full" onClick={(e) => e.stopPropagation()}>
+                <img src={lightbox.url} alt={lightbox.nombre} className="max-h-[85vh] max-w-full rounded-lg shadow-2xl object-contain" />
+                <button
+                  onClick={() => setLightbox(null)}
+                  className="absolute -top-3 -right-3 bg-white text-gray-800 rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold shadow-lg hover:bg-gray-100"
+                >
+                  ×
+                </button>
+                <p className="text-center text-white/70 text-sm mt-2">{lightbox.nombre}</p>
+              </div>
             </div>
           )}
         </div>

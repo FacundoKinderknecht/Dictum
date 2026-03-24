@@ -20,9 +20,8 @@ export default function Pacientes() {
   const [editando, setEditando] = useState<Paciente | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState<PacienteCreate>(EMPTY_FORM);
-  const [editForm, setEditForm] = useState<PacienteUpdate>({});
+  const [editForm, setEditForm] = useState<PacienteUpdate & { dni: string }>({ nombre: "", apellido: "", dni: "" });
 
-  // Auto-abrir formulario si viene ?nuevo=1
   useEffect(() => {
     if (searchParams.get("nuevo") === "1") setMostrarFormulario(true);
   }, [searchParams]);
@@ -54,6 +53,15 @@ export default function Pacientes() {
     onError: (err: Error) => setFormError(err.message),
   });
 
+  const eliminarMutation = useMutation({
+    mutationFn: pacientesApi.eliminar,
+    onSuccess: () => {
+      setEditando(null);
+      qc.invalidateQueries({ queryKey: ["pacientes"] });
+    },
+    onError: (err: Error) => setFormError(err.message),
+  });
+
   function handleCrear(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -68,10 +76,12 @@ export default function Pacientes() {
     setEditForm({
       nombre: p.nombre,
       apellido: p.apellido,
+      dni: p.dni,
       fecha_nacimiento: p.fecha_nacimiento ?? "",
       telefono: p.telefono ?? "",
     });
     setFormError(null);
+    setMostrarFormulario(false);
   }
 
   function handleActualizar(e: React.FormEvent) {
@@ -79,11 +89,23 @@ export default function Pacientes() {
     if (!editando) return;
     setFormError(null);
     const data: PacienteUpdate = {};
-    if (editForm.nombre) data.nombre = editForm.nombre;
-    if (editForm.apellido) data.apellido = editForm.apellido;
-    if (editForm.fecha_nacimiento) data.fecha_nacimiento = editForm.fecha_nacimiento;
-    if (editForm.telefono !== undefined) data.telefono = editForm.telefono || undefined;
+    if (editForm.nombre !== editando.nombre) data.nombre = editForm.nombre;
+    if (editForm.apellido !== editando.apellido) data.apellido = editForm.apellido;
+    if (editForm.dni !== editando.dni) data.dni = editForm.dni;
+    if (editForm.fecha_nacimiento !== (editando.fecha_nacimiento ?? "")) {
+      data.fecha_nacimiento = editForm.fecha_nacimiento || undefined;
+    }
+    if (editForm.telefono !== (editando.telefono ?? "")) {
+      data.telefono = editForm.telefono || undefined;
+    }
+    if (Object.keys(data).length === 0) { setEditando(null); return; }
     actualizarMutation.mutate({ id: editando.id, data });
+  }
+
+  function handleEliminar() {
+    if (!editando) return;
+    if (!confirm(`¿Eliminar a ${editando.apellido}, ${editando.nombre}? Esta acción no se puede deshacer.`)) return;
+    eliminarMutation.mutate(editando.id);
   }
 
   return (
@@ -108,38 +130,11 @@ export default function Pacientes() {
           <form onSubmit={handleCrear} className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
             <h2 className="font-semibold text-gray-800">Nuevo paciente</h2>
             <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Apellido"
-                value={form.apellido}
-                onChange={(e) => setForm({ ...form, apellido: e.target.value })}
-                required
-              />
-              <Input
-                label="Nombre"
-                value={form.nombre}
-                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                required
-              />
-              <Input
-                label="DNI"
-                value={form.dni}
-                onChange={(e) => setForm({ ...form, dni: e.target.value })}
-                required
-                pattern="\d+"
-                title="Solo números"
-              />
-              <Input
-                label="Fecha de nacimiento"
-                type="date"
-                value={form.fecha_nacimiento ?? ""}
-                onChange={(e) => setForm({ ...form, fecha_nacimiento: e.target.value })}
-              />
-              <Input
-                label="Teléfono"
-                value={form.telefono ?? ""}
-                onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-                className="col-span-2"
-              />
+              <Input label="Apellido" value={form.apellido} onChange={(e) => setForm({ ...form, apellido: e.target.value })} required />
+              <Input label="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
+              <Input label="DNI" value={form.dni} onChange={(e) => setForm({ ...form, dni: e.target.value })} required pattern="\d+" title="Solo números" />
+              <Input label="Fecha de nacimiento" type="date" value={form.fecha_nacimiento ?? ""} onChange={(e) => setForm({ ...form, fecha_nacimiento: e.target.value })} />
+              <Input label="Teléfono" value={form.telefono ?? ""} onChange={(e) => setForm({ ...form, telefono: e.target.value })} className="col-span-2" />
             </div>
             {formError && <p className="text-sm text-red-600">{formError}</p>}
             <div className="flex gap-2">
@@ -152,39 +147,29 @@ export default function Pacientes() {
         {/* Formulario editar paciente */}
         {editando && (
           <form onSubmit={handleActualizar} className="bg-white border border-idm/30 rounded-xl p-6 space-y-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-gray-800">Editar: {editando.apellido}, {editando.nombre}</h2>
-              <span className="text-xs text-gray-400">DNI {editando.dni} (no editable)</span>
-            </div>
+            <h2 className="font-semibold text-gray-800">Editar paciente</h2>
             <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Apellido"
-                value={editForm.apellido ?? ""}
-                onChange={(e) => setEditForm({ ...editForm, apellido: e.target.value })}
-                required
-              />
-              <Input
-                label="Nombre"
-                value={editForm.nombre ?? ""}
-                onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })}
-                required
-              />
-              <Input
-                label="Fecha de nacimiento"
-                type="date"
-                value={editForm.fecha_nacimiento ?? ""}
-                onChange={(e) => setEditForm({ ...editForm, fecha_nacimiento: e.target.value })}
-              />
-              <Input
-                label="Teléfono"
-                value={editForm.telefono ?? ""}
-                onChange={(e) => setEditForm({ ...editForm, telefono: e.target.value })}
-              />
+              <Input label="Apellido" value={editForm.apellido ?? ""} onChange={(e) => setEditForm({ ...editForm, apellido: e.target.value })} required />
+              <Input label="Nombre" value={editForm.nombre ?? ""} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} required />
+              <Input label="DNI" value={editForm.dni ?? ""} onChange={(e) => setEditForm({ ...editForm, dni: e.target.value })} required pattern="\d+" title="Solo números" />
+              <Input label="Fecha de nacimiento" type="date" value={editForm.fecha_nacimiento ?? ""} onChange={(e) => setEditForm({ ...editForm, fecha_nacimiento: e.target.value })} />
+              <Input label="Teléfono" value={editForm.telefono ?? ""} onChange={(e) => setEditForm({ ...editForm, telefono: e.target.value })} className="col-span-2" />
             </div>
             {formError && <p className="text-sm text-red-600">{formError}</p>}
-            <div className="flex gap-2">
-              <Button type="submit" loading={actualizarMutation.isPending}>Guardar cambios</Button>
-              <Button type="button" variant="ghost" onClick={() => { setEditando(null); setFormError(null); }}>Cancelar</Button>
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2">
+                <Button type="submit" loading={actualizarMutation.isPending}>Guardar cambios</Button>
+                <Button type="button" variant="ghost" onClick={() => { setEditando(null); setFormError(null); }}>Cancelar</Button>
+              </div>
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                loading={eliminarMutation.isPending}
+                onClick={handleEliminar}
+              >
+                Eliminar paciente
+              </Button>
             </div>
           </form>
         )}
@@ -199,10 +184,7 @@ export default function Pacientes() {
 
         <div className="space-y-2">
           {pacientes?.map((p) => (
-            <div
-              key={p.id}
-              className="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center justify-between"
-            >
+            <div key={p.id} className="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center justify-between">
               <div>
                 <p className="font-medium text-gray-800">{p.apellido}, {p.nombre}</p>
                 <p className="text-sm text-gray-500">
@@ -212,18 +194,9 @@ export default function Pacientes() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleEditar(p)}
-                >
-                  Editar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => navigate(`/medico/nuevo-informe?paciente_id=${p.id}`)}
-                >
+                <Button size="sm" variant="ghost" onClick={() => handleEditar(p)}>Editar</Button>
+                {/* Pasar el paciente por state para evitar re-fetch */}
+                <Button size="sm" variant="secondary" onClick={() => navigate("/medico/nuevo-informe", { state: { paciente: p } })}>
                   Nuevo informe
                 </Button>
               </div>

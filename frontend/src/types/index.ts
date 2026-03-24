@@ -41,6 +41,7 @@ export interface PacienteCreate {
 export interface PacienteUpdate {
   nombre?: string;
   apellido?: string;
+  dni?: string;
   fecha_nacimiento?: string;
   telefono?: string;
 }

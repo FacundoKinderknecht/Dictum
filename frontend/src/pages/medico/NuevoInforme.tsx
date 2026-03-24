@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { pacientesApi } from "../../api/pacientes";
 import { informesApi } from "../../api/informes";
@@ -14,11 +14,15 @@ import { ApiError } from "../../api/client";
 
 export default function NuevoInforme() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const pacienteIdParam = searchParams.get("paciente_id");
 
   const [busqueda, setBusqueda] = useState("");
-  const [pacienteSeleccionado, setPacienteSeleccionado] = useState<Paciente | null>(null);
+  // Si viene de la página de pacientes con state, usarlo directamente (sin re-fetch)
+  const [pacienteSeleccionado, setPacienteSeleccionado] = useState<Paciente | null>(
+    (location.state as { paciente?: Paciente } | null)?.paciente ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const crearMutation = useCrearInforme();
