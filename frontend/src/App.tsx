@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthContext } from "./hooks/useAuth";
 import { authApi } from "./api/auth";
 import { setTokenGetter } from "./api/client";
+import { setImagenTokenGetter } from "./api/imagenes";
 import { router } from "./router";
 import type { AuthUser, UserRole } from "./types";
 
@@ -24,6 +25,7 @@ export default function App() {
   // Inyecta el getter de token en el cliente HTTP al montar
   useEffect(() => {
     setTokenGetter(() => user?.token ?? null);
+    setImagenTokenGetter(() => user?.token ?? null);
   }, [user]);
 
   const login = useCallback(async (email: string, password: string) => {

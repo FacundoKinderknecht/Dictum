@@ -10,7 +10,7 @@ export default function ColaImpresion() {
   const { data: informes, isLoading, error } = useInformesFinalizados();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  async function handleDescargar(informeId: string, nombre: string) {
+  async function handleDescargar(informeId: string) {
     setDownloadingId(informeId);
     try {
       const blob = await informesApi.descargarPdf(informeId);
@@ -82,9 +82,7 @@ export default function ColaImpresion() {
                       size="sm"
                       variant="secondary"
                       loading={downloadingId === inf.id}
-                      onClick={() =>
-                        handleDescargar(inf.id, `${inf.paciente_apellido}_${inf.paciente_nombre}`)
-                      }
+                      onClick={() => handleDescargar(inf.id)}
                     >
                       Descargar PDF
                     </Button>
