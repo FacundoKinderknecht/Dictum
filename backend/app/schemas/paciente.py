@@ -4,6 +4,13 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
+class PacienteUpdate(BaseModel):
+    nombre: str | None = Field(default=None, min_length=1, max_length=100)
+    apellido: str | None = Field(default=None, min_length=1, max_length=100)
+    fecha_nacimiento: date | None = None
+    telefono: str | None = Field(default=None, max_length=30)
+
+
 class PacienteCreate(BaseModel):
     nombre: str = Field(..., min_length=1, max_length=100)
     apellido: str = Field(..., min_length=1, max_length=100)

@@ -1,8 +1,12 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.dependencies import get_client_ip, get_supabase_for_user, require_role
-from app.schemas.paciente import PacienteCreate, PacienteOut
+from app.schemas.paciente import PacienteCreate, PacienteOut, PacienteUpdate
 from app.services import audit_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -74,16 +78,13 @@ def crear_paciente(
             detail="Ya existe un paciente con ese DNI",
         )
 
+    payload = body.model_dump(exclude_none=True, mode="json")
+    payload["created_by"] = current_user["id"]
+
     try:
-        result = (
-            client.table("pacientes")
-            .insert({
-                **body.model_dump(exclude_none=True),
-                "created_by": current_user["id"],
-            })
-            .execute()
-        )
-    except Exception:
+        result = client.table("pacientes").insert(payload).execute()
+    except Exception as exc:
+        logger.error("Error al crear paciente: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al crear el paciente",
@@ -101,3 +102,38 @@ def crear_paciente(
     )
 
     return nuevo
+
+
+@router.put("/{paciente_id}", response_model=PacienteOut)
+def actualizar_paciente(
+    request: Request,
+    paciente_id: str,
+    body: PacienteUpdate,
+    current_user: dict = Depends(_medico),
+) -> PacienteOut:
+    """Actualiza datos de un paciente (excepto DNI)."""
+    client = get_supabase_for_user(current_user["token"])
+
+    changes = body.model_dump(exclude_none=True, mode="json")
+    if not changes:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sin cambios")
+
+    try:
+        result = client.table("pacientes").update(changes).eq("id", paciente_id).execute()
+    except Exception as exc:
+        logger.error("Error al actualizar paciente %s: %s", paciente_id, exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al actualizar")
+
+    if not result.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente no encontrado")
+
+    audit_service.log_audit(
+        usuario_id=current_user["id"],
+        accion=audit_service.ACTUALIZAR_PACIENTE,
+        tabla_afectada="pacientes",
+        registro_id=paciente_id,
+        detalle={"campos_modificados": list(changes.keys())},
+        ip_address=get_client_ip(request),
+    )
+
+    return result.data[0]

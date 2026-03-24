@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 LOGIN               = "login"
 LOGOUT              = "logout"
 CREAR_PACIENTE      = "crear_paciente"
+ACTUALIZAR_PACIENTE = "actualizar_paciente"
 CREAR_INFORME       = "crear_informe"
 ACTUALIZAR_INFORME  = "actualizar_informe"
 FINALIZAR_INFORME   = "finalizar_informe"

@@ -71,6 +71,27 @@ app.include_router(imagenes.router,  prefix="/informes",  tags=["imagenes"])
 app.include_router(pdf.router,       prefix="/informes",  tags=["pdf"])
 app.include_router(admin.router,     prefix="/admin",     tags=["admin"])
 
+# ── Startup: asegurar que el bucket de imágenes exista ───────────────────────
+_startup_logger = logging.getLogger("startup")
+
+@app.on_event("startup")
+async def ensure_storage_bucket() -> None:
+    """Crea el bucket 'informe-imagenes' si no existe. Fallo no crítico."""
+    from app.dependencies import get_admin_client
+    BUCKET = "informe-imagenes"
+    try:
+        client = get_admin_client()
+        buckets = client.storage.list_buckets()
+        existing = [b.name for b in buckets]
+        if BUCKET not in existing:
+            client.storage.create_bucket(BUCKET, options={"public": False})
+            _startup_logger.info("Bucket '%s' creado.", BUCKET)
+        else:
+            _startup_logger.info("Bucket '%s' ya existe.", BUCKET)
+    except Exception as exc:
+        _startup_logger.error("No se pudo verificar/crear bucket '%s': %s", BUCKET, exc)
+
+
 # ── Health check ──────────────────────────────────────────────────────────────
 @app.get("/health", tags=["sistema"])
 def health_check():

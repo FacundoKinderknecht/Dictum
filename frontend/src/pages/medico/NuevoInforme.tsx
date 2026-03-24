@@ -114,7 +114,7 @@ export default function NuevoInforme() {
             </div>
             <p className="text-sm text-gray-500">
               ¿No encontrás el paciente?{" "}
-              <a href="/medico/pacientes" className="text-idm hover:underline">
+              <a href="/medico/pacientes?nuevo=1" className="text-idm hover:underline">
                 Crear paciente nuevo
               </a>
             </p>

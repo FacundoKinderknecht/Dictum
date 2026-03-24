@@ -38,6 +38,13 @@ export interface PacienteCreate {
   telefono?: string;
 }
 
+export interface PacienteUpdate {
+  nombre?: string;
+  apellido?: string;
+  fecha_nacimiento?: string;
+  telefono?: string;
+}
+
 // ── Informes ──────────────────────────────────────────────────────────────────
 export type EstadoInforme = "borrador" | "finalizado";
 

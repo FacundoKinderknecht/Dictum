@@ -1,25 +1,33 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { pacientesApi } from "../../api/pacientes";
 import AppHeader from "../../components/ui/AppHeader";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
-import type { PacienteCreate } from "../../types";
+import type { Paciente, PacienteCreate, PacienteUpdate } from "../../types";
+
+const EMPTY_FORM: PacienteCreate = { nombre: "", apellido: "", dni: "", fecha_nacimiento: "", telefono: "" };
 
 export default function Pacientes() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const qc = useQueryClient();
+
   const [busqueda, setBusqueda] = useState("");
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [editando, setEditando] = useState<Paciente | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [form, setForm] = useState<PacienteCreate>(EMPTY_FORM);
+  const [editForm, setEditForm] = useState<PacienteUpdate>({});
 
-  const [form, setForm] = useState<PacienteCreate>({
-    nombre: "", apellido: "", dni: "",
-    fecha_nacimiento: "", telefono: "",
-  });
+  // Auto-abrir formulario si viene ?nuevo=1
+  useEffect(() => {
+    if (searchParams.get("nuevo") === "1") setMostrarFormulario(true);
+  }, [searchParams]);
 
-  const { data: pacientes, isLoading, refetch } = useQuery({
+  const { data: pacientes, isLoading } = useQuery({
     queryKey: ["pacientes", busqueda],
     queryFn: () => pacientesApi.buscar(busqueda || undefined),
   });
@@ -28,8 +36,20 @@ export default function Pacientes() {
     mutationFn: pacientesApi.crear,
     onSuccess: () => {
       setMostrarFormulario(false);
-      setForm({ nombre: "", apellido: "", dni: "", fecha_nacimiento: "", telefono: "" });
-      refetch();
+      setForm(EMPTY_FORM);
+      setFormError(null);
+      qc.invalidateQueries({ queryKey: ["pacientes"] });
+    },
+    onError: (err: Error) => setFormError(err.message),
+  });
+
+  const actualizarMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: PacienteUpdate }) =>
+      pacientesApi.actualizar(id, data),
+    onSuccess: () => {
+      setEditando(null);
+      setFormError(null);
+      qc.invalidateQueries({ queryKey: ["pacientes"] });
     },
     onError: (err: Error) => setFormError(err.message),
   });
@@ -43,6 +63,29 @@ export default function Pacientes() {
     crearMutation.mutate(payload);
   }
 
+  function handleEditar(p: Paciente) {
+    setEditando(p);
+    setEditForm({
+      nombre: p.nombre,
+      apellido: p.apellido,
+      fecha_nacimiento: p.fecha_nacimiento ?? "",
+      telefono: p.telefono ?? "",
+    });
+    setFormError(null);
+  }
+
+  function handleActualizar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editando) return;
+    setFormError(null);
+    const data: PacienteUpdate = {};
+    if (editForm.nombre) data.nombre = editForm.nombre;
+    if (editForm.apellido) data.apellido = editForm.apellido;
+    if (editForm.fecha_nacimiento) data.fecha_nacimiento = editForm.fecha_nacimiento;
+    if (editForm.telefono !== undefined) data.telefono = editForm.telefono || undefined;
+    actualizarMutation.mutate({ id: editando.id, data });
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <AppHeader
@@ -52,23 +95,18 @@ export default function Pacientes() {
             <Button variant="ghost" size="sm" onClick={() => navigate("/medico/dashboard")}>
               ← Volver
             </Button>
-            <Button size="sm" onClick={() => setMostrarFormulario(true)}>
+            <Button size="sm" onClick={() => { setMostrarFormulario(true); setEditando(null); }}>
               + Nuevo paciente
             </Button>
           </>
         }
       />
 
-      <main className="max-w-3xl mx-auto px-6 py-8 space-y-6">
-        <Input
-          placeholder="Buscar por apellido, nombre o DNI..."
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-        />
-
+      <main className="max-w-3xl mx-auto px-6 py-8 space-y-5">
+        {/* Formulario nuevo paciente */}
         {mostrarFormulario && (
-          <form onSubmit={handleCrear} className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-            <h2 className="font-medium text-gray-800">Nuevo paciente</h2>
+          <form onSubmit={handleCrear} className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
+            <h2 className="font-semibold text-gray-800">Nuevo paciente</h2>
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="Apellido"
@@ -104,12 +142,58 @@ export default function Pacientes() {
               />
             </div>
             {formError && <p className="text-sm text-red-600">{formError}</p>}
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <Button type="submit" loading={crearMutation.isPending}>Crear paciente</Button>
-              <Button type="button" variant="ghost" onClick={() => setMostrarFormulario(false)}>Cancelar</Button>
+              <Button type="button" variant="ghost" onClick={() => { setMostrarFormulario(false); setFormError(null); }}>Cancelar</Button>
             </div>
           </form>
         )}
+
+        {/* Formulario editar paciente */}
+        {editando && (
+          <form onSubmit={handleActualizar} className="bg-white border border-idm/30 rounded-xl p-6 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-gray-800">Editar: {editando.apellido}, {editando.nombre}</h2>
+              <span className="text-xs text-gray-400">DNI {editando.dni} (no editable)</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Apellido"
+                value={editForm.apellido ?? ""}
+                onChange={(e) => setEditForm({ ...editForm, apellido: e.target.value })}
+                required
+              />
+              <Input
+                label="Nombre"
+                value={editForm.nombre ?? ""}
+                onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })}
+                required
+              />
+              <Input
+                label="Fecha de nacimiento"
+                type="date"
+                value={editForm.fecha_nacimiento ?? ""}
+                onChange={(e) => setEditForm({ ...editForm, fecha_nacimiento: e.target.value })}
+              />
+              <Input
+                label="Teléfono"
+                value={editForm.telefono ?? ""}
+                onChange={(e) => setEditForm({ ...editForm, telefono: e.target.value })}
+              />
+            </div>
+            {formError && <p className="text-sm text-red-600">{formError}</p>}
+            <div className="flex gap-2">
+              <Button type="submit" loading={actualizarMutation.isPending}>Guardar cambios</Button>
+              <Button type="button" variant="ghost" onClick={() => { setEditando(null); setFormError(null); }}>Cancelar</Button>
+            </div>
+          </form>
+        )}
+
+        <Input
+          placeholder="Buscar por apellido, nombre o DNI..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
 
         {isLoading && <LoadingSpinner />}
 
@@ -121,15 +205,28 @@ export default function Pacientes() {
             >
               <div>
                 <p className="font-medium text-gray-800">{p.apellido}, {p.nombre}</p>
-                <p className="text-sm text-gray-500">DNI {p.dni}</p>
+                <p className="text-sm text-gray-500">
+                  DNI {p.dni}
+                  {p.fecha_nacimiento && ` · ${new Date(p.fecha_nacimiento + "T00:00:00").toLocaleDateString("es-AR")}`}
+                  {p.telefono && ` · ${p.telefono}`}
+                </p>
               </div>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => navigate(`/medico/nuevo-informe?paciente_id=${p.id}`)}
-              >
-                Nuevo informe
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleEditar(p)}
+                >
+                  Editar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => navigate(`/medico/nuevo-informe?paciente_id=${p.id}`)}
+                >
+                  Nuevo informe
+                </Button>
+              </div>
             </div>
           ))}
           {!isLoading && pacientes?.length === 0 && (
