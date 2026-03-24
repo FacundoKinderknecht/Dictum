@@ -1,7 +1,7 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 
-from app.db_client import get_supabase_for_user, get_admin_client
+from app.dependencies import get_supabase_for_user, get_admin_client
 from app.dependencies import require_role
 
 router = APIRouter()
