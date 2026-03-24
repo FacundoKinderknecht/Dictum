@@ -35,6 +35,7 @@ def login(request: Request, body: LoginRequest) -> LoginResponse:
         profile_result = (
             client.table("profiles")
             .select("nombre, apellido, rol")
+            .eq("id", session["user_id"])
             .single()
             .execute()
         )

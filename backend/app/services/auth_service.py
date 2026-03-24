@@ -20,6 +20,7 @@ def sign_in(email: str, password: str) -> dict:
         "access_token": response.session.access_token,
         "refresh_token": response.session.refresh_token,
         "expires_in": response.session.expires_in,
+        "user_id": response.user.id,
     }
 
 
