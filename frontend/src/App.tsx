@@ -48,6 +48,9 @@ export default function App() {
   // Aplica una respuesta de login/refresh: actualiza estado, sessionStorage y timer
   const applySession = useCallback((res: LoginResponse) => {
     const u = buildUser(res);
+    // Inyectar getter ANTES de setUser para evitar race condition con TanStack Query
+    setTokenGetter(() => u.token ?? null);
+    setImagenTokenGetter(() => u.token ?? null);
     setUser(u);
     persistSession(u, res);
 
@@ -82,6 +85,8 @@ export default function App() {
 
       if (Date.now() < expiresAt) {
         // Token todavía válido — restaurar directamente
+        setTokenGetter(() => storedUser.token ?? null);
+        setImagenTokenGetter(() => storedUser.token ?? null);
         setUser(storedUser);
         const delay = expiresAt - Date.now() - 5 * 60 * 1000;
         if (delay > 0) {

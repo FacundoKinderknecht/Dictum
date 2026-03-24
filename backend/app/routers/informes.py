@@ -35,7 +35,7 @@ def listar_mis_informes(
     return [_flatten_informe(r) for r in rows]
 
 
-@router.post("/", response_model=InformeOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=InformeOut, status_code=status.HTTP_201_CREATED)
 def crear_informe(
     request: Request,
     body: InformeCreate,

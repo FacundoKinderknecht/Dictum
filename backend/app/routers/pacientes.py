@@ -9,7 +9,7 @@ router = APIRouter()
 _medico = require_role("medico")
 
 
-@router.get("/", response_model=list[PacienteOut])
+@router.get("", response_model=list[PacienteOut])
 def buscar_pacientes(
     q: str | None = Query(default=None, description="Buscar por nombre, apellido o DNI"),
     current_user: dict = Depends(_medico),
@@ -52,7 +52,7 @@ def get_paciente(
     return result.data
 
 
-@router.post("/", response_model=PacienteOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=PacienteOut, status_code=status.HTTP_201_CREATED)
 def crear_paciente(
     request: Request,
     body: PacienteCreate,
