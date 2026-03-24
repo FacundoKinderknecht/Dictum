@@ -1,6 +1,10 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.dependencies import get_client_ip, get_supabase_for_user, require_role
+
+logger = logging.getLogger(__name__)
 from app.schemas.informe import InformeConPaciente, InformeCreate, InformeOut, InformeUpdate
 from app.services import audit_service
 from app.services.informe_service import assert_borrador, get_informe_or_404
@@ -49,18 +53,16 @@ def crear_informe(
     if not pac.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente no encontrado")
 
+    # mode="json" serializa UUID→str y date→ISO string automáticamente
+    payload = body.model_dump(exclude_none=True, mode="json")
+    payload["paciente_id"] = str(body.paciente_id)
+    payload["medico_id"] = current_user["id"]
+    payload["estado"] = "borrador"
+
     try:
-        result = (
-            client.table("informes")
-            .insert({
-                **body.model_dump(exclude_none=False),
-                "paciente_id": str(body.paciente_id),
-                "medico_id": current_user["id"],
-                "estado": "borrador",
-            })
-            .execute()
-        )
-    except Exception:
+        result = client.table("informes").insert(payload).execute()
+    except Exception as exc:
+        logger.error("Error al crear informe: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al crear el informe",
@@ -120,7 +122,7 @@ def actualizar_informe(
     client = get_supabase_for_user(current_user["token"])
     informe = get_informe_or_404(client, informe_id, current_user["id"])
 
-    changes = body.model_dump(exclude_none=True)
+    changes = body.model_dump(exclude_none=True, mode="json")
     if not changes:
         return informe
 
@@ -131,7 +133,8 @@ def actualizar_informe(
             .eq("id", informe_id)
             .execute()
         )
-    except Exception:
+    except Exception as exc:
+        logger.error("Error al actualizar informe %s: %s", informe_id, exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al actualizar el informe",
