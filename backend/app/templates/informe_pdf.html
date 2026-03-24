@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Liberation Serif", serif;
+      font-size: 11pt;
+      color: #1a1a1a;
+      padding: 2cm 2.5cm;
+    }
+
+    /* ── Membrete ── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #1a1a1a;
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+    }
+    .header-info h1 {
+      font-size: 16pt;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+    .header-info p {
+      font-size: 9pt;
+      color: #444;
+      margin-top: 2px;
+    }
+    .header-id {
+      text-align: right;
+      font-size: 9pt;
+      color: #555;
+    }
+
+    /* ── Secciones ── */
+    .section {
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 10pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #333;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 3px;
+      margin-bottom: 8px;
+    }
+
+    /* ── Tabla de datos ── */
+    .data-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 24px;
+    }
+    .data-row {
+      display: flex;
+      gap: 6px;
+    }
+    .data-label {
+      font-weight: bold;
+      font-size: 10pt;
+      white-space: nowrap;
+    }
+    .data-value {
+      font-size: 10pt;
+    }
+
+    /* ── Campos del estudio ── */
+    .campo-block {
+      margin-bottom: 10px;
+    }
+    .campo-label {
+      font-weight: bold;
+      font-size: 10pt;
+      margin-bottom: 2px;
+    }
+    .campo-value {
+      font-size: 10pt;
+      padding-left: 8px;
+      white-space: pre-wrap;
+    }
+
+    /* ── Observaciones (HTML de Tiptap) ── */
+    .observaciones-content {
+      font-size: 10pt;
+      line-height: 1.6;
+      padding-left: 4px;
+    }
+    .observaciones-content p { margin-bottom: 4px; }
+    .observaciones-content ul, .observaciones-content ol {
+      padding-left: 18px;
+      margin-bottom: 4px;
+    }
+    .observaciones-content strong { font-weight: bold; }
+    .observaciones-content em { font-style: italic; }
+
+    /* ── Firma ── */
+    .firma {
+      margin-top: 40px;
+      text-align: right;
+    }
+    .firma-line {
+      display: inline-block;
+      border-top: 1px solid #1a1a1a;
+      width: 220px;
+      padding-top: 4px;
+      text-align: center;
+    }
+    .firma-nombre {
+      font-weight: bold;
+      font-size: 10pt;
+    }
+    .firma-sub {
+      font-size: 9pt;
+      color: #555;
+    }
+
+    /* ── Pie de página ── */
+    .footer {
+      position: fixed;
+      bottom: 1.5cm;
+      left: 2.5cm;
+      right: 2.5cm;
+      font-size: 8pt;
+      color: #777;
+      border-top: 1px solid #ccc;
+      padding-top: 5px;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Membrete -->
+  <div class="header">
+    <div class="header-info">
+      <h1>Instituto de Diagnóstico Médico</h1>
+      <p>San Salvador, Entre Ríos, Argentina</p>
+      <!-- TODO: agregar dirección, teléfono y email cuando los provea el instituto -->
+    </div>
+    <div class="header-id">
+      <p><strong>Informe N°:</strong> {{ id_corto }}</p>
+      <p><strong>Fecha emisión:</strong> {{ fecha_emision }}</p>
+    </div>
+  </div>
+
+  <!-- Datos del paciente -->
+  <div class="section">
+    <div class="section-title">Datos del Paciente</div>
+    <div class="data-grid">
+      <div class="data-row">
+        <span class="data-label">Apellido y Nombre:</span>
+        <span class="data-value">{{ paciente.apellido }}, {{ paciente.nombre }}</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">DNI:</span>
+        <span class="data-value">{{ paciente.dni }}</span>
+      </div>
+      {% if paciente.fecha_nacimiento %}
+      <div class="data-row">
+        <span class="data-label">Fecha de nacimiento:</span>
+        <span class="data-value">
+          {% if paciente.fecha_nacimiento is string %}
+            {{ paciente.fecha_nacimiento }}
+          {% else %}
+            {{ paciente.fecha_nacimiento.strftime('%d/%m/%Y') }}
+          {% endif %}
+          {% if edad %} ({{ edad }}){% endif %}
+        </span>
+      </div>
+      {% endif %}
+      {% if paciente.telefono %}
+      <div class="data-row">
+        <span class="data-label">Teléfono:</span>
+        <span class="data-value">{{ paciente.telefono }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Datos del estudio -->
+  <div class="section">
+    <div class="section-title">Datos del Estudio</div>
+    <div class="data-grid">
+      <div class="data-row">
+        <span class="data-label">Tipo de estudio:</span>
+        <span class="data-value">{{ informe.tipo_estudio }}</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Fecha del estudio:</span>
+        <span class="data-value">
+          {% if informe.fecha_estudio is string %}
+            {{ informe.fecha_estudio }}
+          {% else %}
+            {{ informe.fecha_estudio.strftime('%d/%m/%Y') }}
+          {% endif %}
+        </span>
+      </div>
+      {% if informe.medico_solicitante %}
+      <div class="data-row">
+        <span class="data-label">Médico solicitante:</span>
+        <span class="data-value">{{ informe.medico_solicitante }}</span>
+      </div>
+      {% endif %}
+      <div class="data-row">
+        <span class="data-label">Médico informante:</span>
+        <span class="data-value">Dr/a. {{ medico.apellido }}, {{ medico.nombre }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Campos del estudio (desde campos_json) -->
+  {% if informe.campos_json %}
+  <div class="section">
+    <div class="section-title">Informe</div>
+    {% for key, value in informe.campos_json.items() %}
+      {% if value %}
+      <div class="campo-block">
+        <div class="campo-label">{{ key | replace('_', ' ') | title }}:</div>
+        <div class="campo-value">{{ value }}</div>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Observaciones -->
+  {% if informe.observaciones %}
+  <div class="section">
+    <div class="section-title">Observaciones</div>
+    <div class="observaciones-content">{{ informe.observaciones | safe }}</div>
+  </div>
+  {% endif %}
+
+  <!-- Firma -->
+  <div class="firma">
+    <div class="firma-line">
+      <div class="firma-nombre">Dr/a. {{ medico.apellido }}, {{ medico.nombre }}</div>
+      <div class="firma-sub">Médico Informante</div>
+      <!-- TODO: agregar matrícula médica cuando la provea el instituto -->
+    </div>
+  </div>
+
+  <!-- Pie de página -->
+  <div class="footer">
+    <span>Instituto de Diagnóstico Médico — San Salvador, E.R.</span>
+    <span>Informe: {{ id_corto }} | Emitido: {{ fecha_emision }}</span>
+  </div>
+
+</body>
+</html>
