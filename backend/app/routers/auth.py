@@ -51,7 +51,7 @@ def login(request: Request, body: LoginRequest) -> LoginResponse:
 
     ip = get_client_ip(request)
     audit_service.log_audit(
-        usuario_id=session["access_token"],  # se resolverá con el sub del JWT en el service
+        usuario_id=session["user_id"],
         accion=audit_service.LOGIN,
         tabla_afectada="auth",
         detalle={"email": body.email},

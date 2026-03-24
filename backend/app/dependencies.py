@@ -35,6 +35,7 @@ def _get_jwks() -> dict:
         try:
             response = httpx.get(
                 f"{settings.supabase_url}/auth/v1/jwks",
+                headers={"apikey": settings.supabase_anon_key},
                 timeout=5.0,
             )
             response.raise_for_status()
