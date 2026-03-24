@@ -14,6 +14,7 @@ interface Props {
   onCancel: () => void;
   isSubmitting: boolean;
   showFinalizarButton?: boolean;
+  guardarLabel?: string;
 }
 
 export default function InformeForm({
@@ -24,6 +25,7 @@ export default function InformeForm({
   onCancel,
   isSubmitting,
   showFinalizarButton = true,
+  guardarLabel = "Guardar borrador",
 }: Props) {
   const initialTipo = initialValues?.tipo_estudio ?? "";
   const isKnownTipo = TIPOS_ESTUDIO_OPTIONS.includes(initialTipo);
@@ -162,10 +164,15 @@ export default function InformeForm({
       </div>
 
       {/* Acciones */}
-      <div className="flex items-center gap-3 pt-2">
-        <Button type="submit" loading={isSubmitting}>
-          Guardar borrador
-        </Button>
+      <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center gap-2">
+          <Button type="submit" loading={isSubmitting}>
+            {guardarLabel}
+          </Button>
+          <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
+            Cancelar
+          </Button>
+        </div>
         {showFinalizarButton && onFinalizar && (
           <Button
             type="button"
@@ -173,12 +180,9 @@ export default function InformeForm({
             onClick={handleFinalizarClick}
             disabled={isSubmitting}
           >
-            Guardar y finalizar
+            Guardar y finalizar →
           </Button>
         )}
-        <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
-          Cancelar
-        </Button>
       </div>
     </form>
   );

@@ -138,6 +138,7 @@ export default function EditarInforme() {
             onGuardar={handleGuardar}
             onFinalizar={informe.estado === "borrador" ? handleFinalizar : undefined}
             showFinalizarButton={informe.estado === "borrador"}
+            guardarLabel={informe.estado === "finalizado" ? "Guardar cambios" : "Guardar borrador"}
             onCancel={() => navigate(-1)}
             isSubmitting={isSubmitting}
           />

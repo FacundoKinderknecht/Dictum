@@ -7,8 +7,8 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants = {
-  primary:   "bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300",
-  secondary: "bg-gray-100 text-gray-800 hover:bg-gray-200 disabled:bg-gray-100 disabled:text-gray-400",
+  primary:   "bg-idm text-white hover:bg-red-700 disabled:bg-red-300",
+  secondary: "bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:bg-gray-100 disabled:text-gray-400",
   danger:    "bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300",
   ghost:     "text-gray-600 hover:bg-gray-100 disabled:text-gray-300",
 };
@@ -31,7 +31,7 @@ export default function Button({
     <button
       disabled={disabled || loading}
       className={[
-        "inline-flex items-center gap-2 rounded font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 cursor-pointer",
+        "inline-flex items-center gap-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-idm/40 focus:ring-offset-1 cursor-pointer",
         variants[variant],
         sizes[size],
         className,

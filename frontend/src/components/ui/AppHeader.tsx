@@ -8,24 +8,25 @@ interface Props {
 
 export default function AppHeader({ title, subtitle, actions }: Props) {
   return (
-    <header className="bg-white border-b border-gray-200 px-8 py-0 flex items-stretch">
-      {/* Franja roja izquierda */}
-      <div className="w-1.5 bg-idm flex-shrink-0 -my-px mr-6" />
-
-      <div className="flex items-center justify-between flex-1 py-5">
-        <div>
-          <div className="flex items-center gap-4">
-            <span className="text-idm font-black text-2xl font-mono tracking-tight">idm</span>
-            <span className="text-gray-300 text-lg">|</span>
-            <h1 className="text-xl font-semibold text-gray-800">{title}</h1>
+    <header className="bg-white border-b border-gray-100 shadow-sm">
+      <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          {/* Logo IDM */}
+          <div className="flex items-center gap-1.5">
+            <div className="w-1 h-8 bg-idm rounded-full" />
+            <span className="text-idm font-black text-2xl tracking-tighter leading-none select-none">idm</span>
           </div>
-          {subtitle && (
-            <p className="text-sm text-gray-500 mt-1 ml-[72px]">{subtitle}</p>
-          )}
+          <div className="w-px h-6 bg-gray-200" />
+          <div>
+            <h1 className="text-base font-semibold text-gray-800 leading-tight">{title}</h1>
+            {subtitle && (
+              <p className="text-xs text-gray-500 leading-tight mt-0.5">{subtitle}</p>
+            )}
+          </div>
         </div>
 
         {actions && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {actions}
           </div>
         )}

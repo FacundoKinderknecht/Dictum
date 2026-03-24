@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import Response
 
@@ -6,6 +8,7 @@ from app.services import audit_service
 from app.services.pdf_service import generar_pdf
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/{informe_id}/pdf")
@@ -51,6 +54,7 @@ def descargar_pdf(
     try:
         pdf_bytes = generar_pdf(informe=row, paciente=paciente, medico=medico)
     except Exception as exc:
+        logger.error("PDF generation failed for informe %s: %s", informe_id, exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al generar el PDF",

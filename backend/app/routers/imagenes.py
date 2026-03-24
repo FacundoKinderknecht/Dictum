@@ -1,3 +1,4 @@
+import logging
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 
@@ -5,6 +6,7 @@ from app.dependencies import get_supabase_for_user, get_admin_client
 from app.dependencies import require_role
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 BUCKET = "informe-imagenes"
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
@@ -48,9 +50,10 @@ def subir_imagen(
         admin_client.storage.from_(BUCKET).upload(
             path=path,
             file=contents,
-            file_options={"content-type": file.content_type},
+            file_options={"content-type": file.content_type, "upsert": "false"},
         )
     except Exception as exc:
+        logger.error("Storage upload failed (bucket=%s path=%s): %s", BUCKET, path, exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al subir la imagen",
