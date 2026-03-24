@@ -111,7 +111,7 @@ export default function MedicoDashboard() {
                           size="sm"
                           onClick={() => navigate(`/medico/editar-informe/${inf.id}`)}
                         >
-                          {inf.estado === "borrador" ? "Editar" : "Ver"}
+                          Editar
                         </Button>
                         {inf.estado === "finalizado" && (
                           <Button
@@ -123,17 +123,15 @@ export default function MedicoDashboard() {
                             PDF
                           </Button>
                         )}
-                        {inf.estado === "borrador" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={eliminarMutation.isPending}
-                            onClick={() => handleEliminar(inf)}
-                            className="text-red-600 hover:bg-red-50"
-                          >
-                            Eliminar
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={eliminarMutation.isPending}
+                          onClick={() => handleEliminar(inf)}
+                          className="text-red-600 hover:bg-red-50"
+                        >
+                          Eliminar
+                        </Button>
                       </div>
                     </td>
                   </tr>

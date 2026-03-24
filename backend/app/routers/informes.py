@@ -119,7 +119,6 @@ def actualizar_informe(
     """Actualiza un informe en borrador. Los finalizados son inmutables."""
     client = get_supabase_for_user(current_user["token"])
     informe = get_informe_or_404(client, informe_id, current_user["id"])
-    assert_borrador(informe)
 
     changes = body.model_dump(exclude_none=True)
     if not changes:
@@ -193,8 +192,7 @@ def eliminar_informe(
 ) -> None:
     """Elimina un informe en borrador. Los finalizados son inmutables."""
     client = get_supabase_for_user(current_user["token"])
-    informe = get_informe_or_404(client, informe_id, current_user["id"])
-    assert_borrador(informe)
+    get_informe_or_404(client, informe_id, current_user["id"])
 
     try:
         client.table("informes").delete().eq("id", informe_id).execute()

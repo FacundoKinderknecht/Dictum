@@ -5,7 +5,12 @@
  * - El token se obtiene de un getter inyectado desde useAuth.
  */
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const _rawUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+// Auto-upgrade http→https cuando la app corre en HTTPS (evita Mixed Content)
+const API_URL =
+  location.protocol === "https:" && _rawUrl.startsWith("http:")
+    ? "https:" + _rawUrl.slice(5)
+    : _rawUrl;
 
 export class ApiError extends Error {
   constructor(

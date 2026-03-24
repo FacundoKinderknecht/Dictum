@@ -27,7 +27,6 @@ export default function EditarInforme() {
     queryFn: () => pacientesApi.getById(informe!.paciente_id),
     enabled: !!informe?.paciente_id,
   });
-
   const { data: imagenes, isLoading: loadingImagenes } = useQuery({
     queryKey: ["imagenes", id],
     queryFn: () => imagenesApi.listar(id!),
@@ -35,6 +34,7 @@ export default function EditarInforme() {
   });
 
   const actualizarMutation = useActualizarInforme(id ?? "");
+  const isSubmitting = actualizarMutation.isPending;
 
   if (loadingInforme || loadingPaciente) {
     return (
@@ -51,9 +51,6 @@ export default function EditarInforme() {
       </div>
     );
   }
-
-  const isFinalizado = informe.estado === "finalizado";
-  const isSubmitting = actualizarMutation.isPending;
 
   async function handleGuardar(data: InformeCreate | InformeUpdate) {
     setError(null);
@@ -104,15 +101,20 @@ export default function EditarInforme() {
     }
   }
 
+  const estadoBadge = informe.estado === "finalizado"
+    ? <span className="text-xs font-medium px-2 py-0.5 rounded bg-green-100 text-green-700">Finalizado</span>
+    : <span className="text-xs font-medium px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">Borrador</span>;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <AppHeader
-        title={isFinalizado ? "Ver informe" : "Editar informe"}
-        subtitle={isFinalizado ? "Finalizado" : "Borrador"}
+        title="Editar informe"
+        subtitle={`${informe.paciente_apellido}, ${informe.paciente_nombre} — ${informe.tipo_estudio}`}
         actions={
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            ← Volver
-          </Button>
+          <div className="flex items-center gap-3">
+            {estadoBadge}
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>← Volver</Button>
+          </div>
         }
       />
 
@@ -123,94 +125,45 @@ export default function EditarInforme() {
           </p>
         )}
 
-        {/* Formulario principal */}
-        {!isFinalizado && (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <InformeForm
-              paciente={paciente}
-              initialValues={{
-                tipo_estudio: informe.tipo_estudio,
-                fecha_estudio: informe.fecha_estudio,
-                medico_solicitante: informe.medico_solicitante ?? undefined,
-                contenido: informe.contenido ?? undefined,
-              }}
-              onGuardar={handleGuardar}
-              onFinalizar={handleFinalizar}
-              onCancel={() => navigate(-1)}
-              isSubmitting={isSubmitting}
-            />
-          </div>
-        )}
-
-        {isFinalizado && (
-          <>
-            {/* Datos del paciente */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Paciente</h2>
-              <p className="text-xl font-bold text-gray-900">
-                {informe.paciente_apellido}, {informe.paciente_nombre}
-              </p>
-              <p className="text-base text-gray-500 mt-1">DNI: {informe.paciente_dni}</p>
-            </div>
-
-            {/* Datos del estudio */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Estudio</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-gray-400 mb-0.5">Tipo</p>
-                  <p className="text-base font-medium text-gray-900">{informe.tipo_estudio}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 mb-0.5">Fecha</p>
-                  <p className="text-base font-medium text-gray-900">
-                    {new Date(informe.fecha_estudio + "T00:00:00").toLocaleDateString("es-AR")}
-                  </p>
-                </div>
-                {informe.medico_solicitante && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-0.5">Médico solicitante</p>
-                    <p className="text-base font-medium text-gray-900">{informe.medico_solicitante}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Contenido */}
-            {informe.contenido && (
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Informe</h2>
-                <p className="text-base text-gray-800 leading-relaxed whitespace-pre-wrap font-mono">
-                  {informe.contenido}
-                </p>
-              </div>
-            )}
-          </>
-        )}
+        {/* Formulario */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+          <InformeForm
+            paciente={paciente}
+            initialValues={{
+              tipo_estudio: informe.tipo_estudio,
+              fecha_estudio: informe.fecha_estudio,
+              medico_solicitante: informe.medico_solicitante ?? undefined,
+              contenido: informe.contenido ?? undefined,
+            }}
+            onGuardar={handleGuardar}
+            onFinalizar={informe.estado === "borrador" ? handleFinalizar : undefined}
+            showFinalizarButton={informe.estado === "borrador"}
+            onCancel={() => navigate(-1)}
+            isSubmitting={isSubmitting}
+          />
+        </div>
 
         {/* Imágenes */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Imágenes</h2>
-            {!isFinalizado && (
-              <>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={handleUpload}
-                />
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  loading={uploading}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  Subir imagen
-                </Button>
-              </>
-            )}
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleUpload}
+              />
+              <Button
+                size="sm"
+                variant="secondary"
+                loading={uploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Subir imagen
+              </Button>
+            </>
           </div>
 
           {loadingImagenes && <LoadingSpinner text="Cargando imágenes..." />}
@@ -223,20 +176,14 @@ export default function EditarInforme() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {imagenes.map((img) => (
                 <div key={img.path} className="relative group rounded-lg overflow-hidden border border-gray-200">
-                  <img
-                    src={img.url}
-                    alt={img.nombre}
-                    className="w-full h-32 object-cover"
-                  />
-                  {!isFinalizado && (
-                    <button
-                      onClick={() => handleEliminar(img.path, img.nombre)}
-                      disabled={deletingPath === img.path}
-                      className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                    >
-                      {deletingPath === img.path ? "..." : "Eliminar"}
-                    </button>
-                  )}
+                  <img src={img.url} alt={img.nombre} className="w-full h-32 object-cover" />
+                  <button
+                    onClick={() => handleEliminar(img.path, img.nombre)}
+                    disabled={deletingPath === img.path}
+                    className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                  >
+                    {deletingPath === img.path ? "..." : "Eliminar"}
+                  </button>
                   <p className="text-xs text-gray-500 truncate px-2 py-1">{img.nombre}</p>
                 </div>
               ))}
