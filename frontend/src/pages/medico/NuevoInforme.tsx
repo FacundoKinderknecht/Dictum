@@ -1,14 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { pacientesApi } from "../../api/pacientes";
 import { useCrearInforme } from "../../hooks/useInformes";
-import InformeForm from "../../components/InformeForm";
 import AppHeader from "../../components/ui/AppHeader";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
-import type { InformeCreate, InformeUpdate, Paciente } from "../../types";
+import type { Paciente } from "../../types";
 import { ApiError } from "../../api/client";
 
 export default function NuevoInforme() {
@@ -18,18 +17,19 @@ export default function NuevoInforme() {
   const pacienteIdParam = searchParams.get("paciente_id");
 
   const [busqueda, setBusqueda] = useState("");
-  // Si viene de la página de pacientes con state, usarlo directamente (sin re-fetch)
-  const [pacienteSeleccionado, setPacienteSeleccionado] = useState<Paciente | null>(
-    (location.state as { paciente?: Paciente } | null)?.paciente ?? null,
-  );
   const [error, setError] = useState<string | null>(null);
+  const [creandoParaId, setCreandoParaId] = useState<string | null>(null);
+
+  // Si viene de la página de pacientes con state, usarlo directamente
+  const pacienteDesdeState = (location.state as { paciente?: Paciente } | null)?.paciente ?? null;
 
   const crearMutation = useCrearInforme();
+  const creacionIniciada = useRef(false);
 
   const { data: pacientes, isLoading: buscando } = useQuery({
     queryKey: ["pacientes", busqueda],
     queryFn: () => pacientesApi.buscar(busqueda || undefined),
-    enabled: !pacienteIdParam,
+    enabled: !pacienteIdParam && !pacienteDesdeState,
   });
 
   const { data: pacienteDirecto } = useQuery({
@@ -38,23 +38,55 @@ export default function NuevoInforme() {
     enabled: !!pacienteIdParam,
   });
 
-  useEffect(() => {
-    if (pacienteDirecto) setPacienteSeleccionado(pacienteDirecto);
-  }, [pacienteDirecto]);
-
-  async function handleGuardar(data: InformeCreate | InformeUpdate) {
+  async function crearInforme(paciente: Paciente) {
+    setCreandoParaId(paciente.id);
     setError(null);
     try {
-      const informe = await crearMutation.mutateAsync(data as InformeCreate);
-      // Siempre navegar a EditarInforme para poder subir imágenes antes de finalizar
+      const hoy = new Date().toISOString().split("T")[0];
+      const informe = await crearMutation.mutateAsync({
+        paciente_id: paciente.id,
+        tipo_estudio: "Ecografía Abdominal",
+        fecha_estudio: hoy,
+      });
       navigate(`/medico/editar-informe/${informe.id}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Error al guardar");
+      setError(err instanceof ApiError ? err.message : "Error al crear el informe");
+      setCreandoParaId(null);
     }
   }
 
-  const isSubmitting = crearMutation.isPending;
+  // Auto-crear si viene con paciente en state
+  useEffect(() => {
+    if (pacienteDesdeState && !creacionIniciada.current) {
+      creacionIniciada.current = true;
+      crearInforme(pacienteDesdeState);
+    }
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-crear si viene con paciente_id en URL
+  useEffect(() => {
+    if (pacienteDirecto && !pacienteDesdeState && !creacionIniciada.current) {
+      creacionIniciada.current = true;
+      crearInforme(pacienteDirecto);
+    }
+  }, [pacienteDirecto]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mientras se auto-crea (desde state o URL param), mostrar spinner
+  if (pacienteDesdeState || pacienteIdParam) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        {error ? (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-4 py-3">
+            {error}
+          </p>
+        ) : (
+          <LoadingSpinner text="Creando informe..." />
+        )}
+      </div>
+    );
+  }
+
+  // Pantalla de búsqueda manual
   return (
     <div className="min-h-screen bg-gray-50">
       <AppHeader
@@ -73,70 +105,50 @@ export default function NuevoInforme() {
           </p>
         )}
 
-        {/* Selección de paciente */}
-        {!pacienteSeleccionado && (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
-            <h2 className="font-medium text-gray-800">Seleccioná un paciente</h2>
-            <Input
-              placeholder="Buscar por apellido, nombre o DNI..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-            />
-            {buscando && <LoadingSpinner text="Buscando..." />}
-            <div className="space-y-2">
-              {pacientes
-                ?.filter(
-                  (p) =>
-                    !busqueda ||
-                    `${p.apellido} ${p.nombre} ${p.dni}`
-                      .toLowerCase()
-                      .includes(busqueda.toLowerCase()),
-                )
-                .map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => setPacienteSeleccionado(p)}
-                    className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <p className="font-medium text-gray-800">
-                      {p.apellido}, {p.nombre}
-                    </p>
-                    <p className="text-sm text-gray-500">DNI {p.dni}</p>
-                  </button>
-                ))}
-            </div>
-            <p className="text-sm text-gray-500">
-              ¿No encontrás el paciente?{" "}
-              <a href="/medico/pacientes?nuevo=1" className="text-idm hover:underline">
-                Crear paciente nuevo
-              </a>
-            </p>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+          <h2 className="font-medium text-gray-800">Seleccioná un paciente</h2>
+          <Input
+            placeholder="Buscar por apellido, nombre o DNI..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
+          {buscando && <LoadingSpinner text="Buscando..." />}
+          <div className="space-y-2">
+            {pacientes
+              ?.filter(
+                (p) =>
+                  !busqueda ||
+                  `${p.apellido} ${p.nombre} ${p.dni}`
+                    .toLowerCase()
+                    .includes(busqueda.toLowerCase()),
+              )
+              .map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => crearInforme(p)}
+                  disabled={!!creandoParaId}
+                  className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-60"
+                >
+                  {creandoParaId === p.id ? (
+                    <p className="text-sm text-gray-500">Creando informe...</p>
+                  ) : (
+                    <>
+                      <p className="font-medium text-gray-800">
+                        {p.apellido}, {p.nombre}
+                      </p>
+                      <p className="text-sm text-gray-500">DNI {p.dni}</p>
+                    </>
+                  )}
+                </button>
+              ))}
           </div>
-        )}
-
-        {/* Formulario */}
-        {pacienteSeleccionado && (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="font-medium text-gray-800">Datos del informe</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setPacienteSeleccionado(null)}
-              >
-                Cambiar paciente
-              </Button>
-            </div>
-            <InformeForm
-              paciente={pacienteSeleccionado}
-              onGuardar={handleGuardar}
-              guardarLabel="Guardar y continuar"
-              showFinalizarButton={false}
-              onCancel={() => navigate(-1)}
-              isSubmitting={isSubmitting}
-            />
-          </div>
-        )}
+          <p className="text-sm text-gray-500">
+            ¿No encontrás el paciente?{" "}
+            <a href="/medico/pacientes?nuevo=1" className="text-idm hover:underline">
+              Crear paciente nuevo
+            </a>
+          </p>
+        </div>
       </main>
     </div>
   );
