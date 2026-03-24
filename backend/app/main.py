@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from app.config import settings
-from app.routers import admin, auth, informes, pacientes, pdf
+from app.routers import admin, auth, imagenes, informes, pacientes, pdf
 
 logging.basicConfig(level=logging.INFO)
 
@@ -31,6 +31,7 @@ app.state.limiter = limiter
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
@@ -63,6 +64,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 app.include_router(auth.router,      prefix="/auth",      tags=["auth"])
 app.include_router(pacientes.router, prefix="/pacientes", tags=["pacientes"])
 app.include_router(informes.router,  prefix="/informes",  tags=["informes"])
+app.include_router(imagenes.router,  prefix="/informes",  tags=["imagenes"])
 app.include_router(pdf.router,       prefix="/informes",  tags=["pdf"])
 app.include_router(admin.router,     prefix="/admin",     tags=["admin"])
 
