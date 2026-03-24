@@ -15,6 +15,30 @@ def _calcular_edad(fecha_nacimiento: date | None) -> str | None:
     return f"{years} años"
 
 
+def _latin1_safe(text: str) -> str:
+    """Reemplaza caracteres fuera de Latin-1 con equivalentes ASCII."""
+    _MAP = {
+        "\u2014": "-",    # em dash —
+        "\u2013": "-",    # en dash –
+        "\u2018": "'",    # ' left single quote
+        "\u2019": "'",    # ' right single quote
+        "\u201c": '"',    # " left double quote
+        "\u201d": '"',    # " right double quote
+        "\u2026": "...",  # … ellipsis
+        "\u2022": "*",    # • bullet
+        "\u00a0": " ",    # non-breaking space
+    }
+    result = []
+    for ch in text:
+        if ch in _MAP:
+            result.append(_MAP[ch])
+        elif ord(ch) > 255:
+            result.append("?")
+        else:
+            result.append(ch)
+    return "".join(result)
+
+
 def _fmt_fecha(valor) -> str:
     if not valor:
         return ""
@@ -42,7 +66,7 @@ class _InformePDF(FPDF):
         self.set_font("Helvetica", "", 7)
         self.set_text_color(130, 130, 130)
         half = (self.w - self.l_margin - self.r_margin) / 2
-        self.cell(half, 4, "Instituto de Diagnóstico Médico — San Salvador, E.R.", align="L")
+        self.cell(half, 4, "Instituto de Diagnóstico Médico - San Salvador, E.R.", align="L")
         self.cell(half, 4, f"Informe: {self._id_corto} | Emitido: {self._fecha_emision}", align="R")
         self.set_text_color(0, 0, 0)
 
@@ -72,7 +96,7 @@ def generar_pdf(informe: dict, paciente: dict, medico: dict) -> bytes:
     def section_title(text: str) -> None:
         pdf.set_font("Helvetica", "B", 9)
         pdf.set_text_color(50, 50, 50)
-        pdf.cell(0, 5, text.upper(), new_x="LMARGIN", new_y="NEXT", align="L")
+        pdf.cell(0, 5, _latin1_safe(text).upper(), new_x="LMARGIN", new_y="NEXT", align="L")
         pdf.set_draw_color(180, 180, 180)
         pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
         pdf.ln(4)
@@ -80,9 +104,9 @@ def generar_pdf(informe: dict, paciente: dict, medico: dict) -> bytes:
 
     def data_row(label: str, value: str) -> None:
         pdf.set_font("Helvetica", "B", 9)
-        pdf.cell(LABEL_W, 5, label)
+        pdf.cell(LABEL_W, 5, _latin1_safe(label))
         pdf.set_font("Helvetica", "", 9)
-        pdf.cell(0, 5, value, new_x="LMARGIN", new_y="NEXT", align="L")
+        pdf.cell(0, 5, _latin1_safe(value), new_x="LMARGIN", new_y="NEXT", align="L")
 
     # ── Header ──────────────────────────────────────────────────────────────
     pdf.set_font("Helvetica", "B", 15)
@@ -134,7 +158,7 @@ def generar_pdf(informe: dict, paciente: dict, medico: dict) -> bytes:
         section_title("Informe")
         pdf.set_font("Courier", "", 9)
         pdf.set_text_color(30, 30, 30)
-        pdf.multi_cell(0, 5, contenido, new_x="LMARGIN", new_y="NEXT", align="L")
+        pdf.multi_cell(0, 5, _latin1_safe(contenido), new_x="LMARGIN", new_y="NEXT", align="L")
         pdf.set_text_color(0, 0, 0)
         pdf.ln(3)
 
