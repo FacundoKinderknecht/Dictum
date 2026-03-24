@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -6,6 +8,7 @@ from app.dependencies import get_client_ip, get_current_user, get_supabase_for_u
 from app.schemas.usuario import LoginRequest, LoginResponse, RefreshRequest
 from app.services import audit_service, auth_service
 
+logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
 router = APIRouter()
 
@@ -19,7 +22,8 @@ def login(request: Request, body: LoginRequest) -> LoginResponse:
     """
     try:
         session = auth_service.sign_in(body.email, body.password)
-    except Exception:
+    except Exception as e:
+        logger.error("Error en sign_in: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales inválidas",
@@ -37,7 +41,8 @@ def login(request: Request, body: LoginRequest) -> LoginResponse:
         profile = profile_result.data
         if not profile or not profile.get("rol"):
             raise ValueError("Perfil no encontrado")
-    except Exception:
+    except Exception as e:
+        logger.error("Error cargando perfil: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales inválidas",
