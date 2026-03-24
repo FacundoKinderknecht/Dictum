@@ -53,7 +53,7 @@ export default function NuevoInforme() {
     setError(null);
     try {
       const informe = await crearMutation.mutateAsync(data as InformeCreate);
-      await informesApi.actualizar(informe.id, { estado: "finalizado" });
+      await informesApi.finalizar(informe.id);
       navigate("/medico/dashboard");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al finalizar");
