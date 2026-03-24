@@ -6,9 +6,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     supabase_url: str
     supabase_anon_key: str
-    # Opcional: solo necesario para validar tokens Legacy HS256 aún en circulación.
-    # Con el nuevo sistema ECC (P-256) de Supabase, la validación usa JWKS.
-    supabase_jwt_secret: str | None = None
     supabase_service_role_key: str
     allowed_origins: str
     environment: str = "development"

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pacientesApi } from "../../api/pacientes";
+import { informesApi } from "../../api/informes";
 import { useInforme, useActualizarInforme } from "../../hooks/useInformes";
 import { imagenesApi } from "../../api/imagenes";
 import InformeForm from "../../components/InformeForm";
@@ -57,7 +58,7 @@ export default function EditarInforme() {
   async function handleGuardar(data: InformeCreate | InformeUpdate) {
     setError(null);
     try {
-      await actualizarMutation.mutateAsync({ ...(data as InformeUpdate), estado: "borrador" });
+      await actualizarMutation.mutateAsync(data as InformeUpdate);
       navigate("/medico/dashboard");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al guardar");
@@ -67,7 +68,8 @@ export default function EditarInforme() {
   async function handleFinalizar(data: InformeCreate | InformeUpdate) {
     setError(null);
     try {
-      await actualizarMutation.mutateAsync({ ...(data as InformeUpdate), estado: "finalizado" });
+      await actualizarMutation.mutateAsync(data as InformeUpdate);
+      await informesApi.finalizar(id!);
       navigate("/medico/dashboard");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al finalizar");

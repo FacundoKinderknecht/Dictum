@@ -9,16 +9,14 @@ class InformeCreate(BaseModel):
     tipo_estudio: str = Field(..., min_length=1, max_length=100)
     fecha_estudio: date
     medico_solicitante: str | None = Field(default=None, max_length=150)
-    campos_json: dict = Field(default_factory=dict)
-    observaciones: str | None = None
+    contenido: str | None = None
 
 
 class InformeUpdate(BaseModel):
     tipo_estudio: str | None = Field(default=None, min_length=1, max_length=100)
     fecha_estudio: date | None = None
     medico_solicitante: str | None = Field(default=None, max_length=150)
-    campos_json: dict | None = None
-    observaciones: str | None = None
+    contenido: str | None = None
 
 
 class InformeOut(BaseModel):
@@ -28,8 +26,7 @@ class InformeOut(BaseModel):
     tipo_estudio: str
     fecha_estudio: date
     medico_solicitante: str | None
-    campos_json: dict
-    observaciones: str | None
+    contenido: str | None
     estado: str
     created_at: datetime
     updated_at: datetime

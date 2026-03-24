@@ -82,7 +82,6 @@ export interface InformeUpdate {
   fecha_estudio?: string;
   medico_solicitante?: string;
   contenido?: string;
-  estado?: EstadoInforme;
 }
 
 // ── Usuarios (admin) ──────────────────────────────────────────────────────────
