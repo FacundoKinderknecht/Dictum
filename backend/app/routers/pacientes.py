@@ -161,6 +161,12 @@ def eliminar_paciente(
         # Admin client para bypassear RLS en el DELETE
         get_admin_client().table("pacientes").delete().eq("id", paciente_id).execute()
     except Exception as exc:
+        exc_str = str(exc)
+        if "23503" in exc_str or "foreign key" in exc_str.lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El paciente tiene informes asociados. Eliminá los informes primero.",
+            )
         logger.error("Error al eliminar paciente %s: %s", paciente_id, exc)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al eliminar")
 

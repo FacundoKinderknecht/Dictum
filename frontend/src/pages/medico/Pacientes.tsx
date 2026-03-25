@@ -124,12 +124,12 @@ export default function Pacientes() {
         }
       />
 
-      <main className="max-w-3xl mx-auto px-6 py-8 space-y-5">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
         {/* Formulario nuevo paciente */}
         {mostrarFormulario && (
           <form onSubmit={handleCrear} className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
             <h2 className="font-semibold text-gray-800">Nuevo paciente</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input label="Apellido" value={form.apellido} onChange={(e) => setForm({ ...form, apellido: e.target.value })} required />
               <Input label="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
               <Input label="DNI" value={form.dni} onChange={(e) => setForm({ ...form, dni: e.target.value })} required pattern="\d+" title="Solo números" />
@@ -148,7 +148,7 @@ export default function Pacientes() {
         {editando && (
           <form onSubmit={handleActualizar} className="bg-white border border-idm/30 rounded-xl p-6 space-y-4 shadow-sm">
             <h2 className="font-semibold text-gray-800">Editar paciente</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input label="Apellido" value={editForm.apellido ?? ""} onChange={(e) => setEditForm({ ...editForm, apellido: e.target.value })} required />
               <Input label="Nombre" value={editForm.nombre ?? ""} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} required />
               <Input label="DNI" value={editForm.dni ?? ""} onChange={(e) => setEditForm({ ...editForm, dni: e.target.value })} required pattern="\d+" title="Solo números" />
@@ -156,7 +156,7 @@ export default function Pacientes() {
               <Input label="Teléfono" value={editForm.telefono ?? ""} onChange={(e) => setEditForm({ ...editForm, telefono: e.target.value })} className="col-span-2" />
             </div>
             {formError && <p className="text-sm text-red-600">{formError}</p>}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex gap-2">
                 <Button type="submit" loading={actualizarMutation.isPending}>Guardar cambios</Button>
                 <Button type="button" variant="ghost" onClick={() => { setEditando(null); setFormError(null); }}>Cancelar</Button>
@@ -184,18 +184,17 @@ export default function Pacientes() {
 
         <div className="space-y-2">
           {pacientes?.map((p) => (
-            <div key={p.id} className="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center justify-between">
-              <div>
+            <div key={p.id} className="bg-white border border-gray-200 rounded-xl px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="min-w-0">
                 <p className="font-medium text-gray-800">{p.apellido}, {p.nombre}</p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 truncate">
                   DNI {p.dni}
                   {p.fecha_nacimiento && ` · ${new Date(p.fecha_nacimiento + "T00:00:00").toLocaleDateString("es-AR")}`}
                   {p.telefono && ` · ${p.telefono}`}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <Button size="sm" variant="ghost" onClick={() => handleEditar(p)}>Editar</Button>
-                {/* Pasar el paciente por state para evitar re-fetch */}
                 <Button size="sm" variant="secondary" onClick={() => navigate("/medico/nuevo-informe", { state: { paciente: p } })}>
                   Nuevo informe
                 </Button>

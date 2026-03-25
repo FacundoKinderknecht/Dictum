@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from app.dependencies import get_client_ip, get_current_user, get_supabase_for_user
+from app.dependencies import get_admin_client, get_client_ip, get_current_user, get_supabase_for_user
 from app.schemas.usuario import LoginRequest, LoginResponse, RefreshRequest
 from app.services import audit_service, auth_service
 
@@ -44,6 +44,15 @@ def login(request: Request, body: LoginRequest) -> LoginResponse:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales inválidas",
         )
+
+    # Enforce single session: last login wins
+    if session.get("session_id"):
+        try:
+            get_admin_client().table("profiles").update(
+                {"current_session_id": session["session_id"]}
+            ).eq("id", session["user_id"]).execute()
+        except Exception:
+            pass  # Non-critical
 
     ip = get_client_ip(request)
     audit_service.log_audit(
@@ -109,6 +118,14 @@ def refresh(body: RefreshRequest) -> LoginResponse:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token inválido o expirado",
         )
+
+    if session.get("session_id"):
+        try:
+            get_admin_client().table("profiles").update(
+                {"current_session_id": session["session_id"]}
+            ).eq("id", session["user_id"]).execute()
+        except Exception:
+            pass
 
     return LoginResponse(
         access_token=session["access_token"],

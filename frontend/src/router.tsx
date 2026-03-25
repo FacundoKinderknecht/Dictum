@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
+import Registro from "./pages/Registro";
 import MedicoDashboard from "./pages/medico/Dashboard";
 import Pacientes from "./pages/medico/Pacientes";
 import NuevoInforme from "./pages/medico/NuevoInforme";
@@ -16,6 +17,10 @@ export const router = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
+  },
+  {
+    path: "/registro",
+    element: <Registro />,
   },
 
   // ── Médico ────────────────────────────────────────────────

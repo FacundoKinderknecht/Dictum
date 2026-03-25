@@ -55,7 +55,7 @@ export default function MedicoDashboard() {
         }
       />
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {isLoading && <LoadingSpinner />}
 
         {error && (
@@ -73,7 +73,47 @@ export default function MedicoDashboard() {
 
         {informes && informes.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm border-collapse">
+            {/* Mobile: cards */}
+            <div className="divide-y divide-gray-100 sm:hidden">
+              {informes.map((inf) => (
+                <div key={inf.id} className="px-4 py-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-800 text-sm truncate">
+                        {inf.paciente_apellido}, {inf.paciente_nombre}
+                      </p>
+                      <p className="text-xs text-gray-400">DNI {inf.paciente_dni}</p>
+                      <p className="text-xs text-gray-600 mt-1">{inf.tipo_estudio}</p>
+                      <p className="text-xs text-gray-400">
+                        {new Date(inf.fecha_estudio + "T00:00:00").toLocaleDateString("es-AR")}
+                      </p>
+                    </div>
+                    <span className={[
+                      "flex-shrink-0 inline-block px-2 py-0.5 rounded text-xs font-medium",
+                      inf.estado === "finalizado" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700",
+                    ].join(" ")}>
+                      {inf.estado}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 mt-3">
+                    <Button variant="ghost" size="sm" onClick={() => navigate(`/medico/editar-informe/${inf.id}`)}>
+                      Editar
+                    </Button>
+                    {inf.estado === "finalizado" && (
+                      <Button variant="ghost" size="sm" loading={downloadingId === inf.id} onClick={() => handleDescargarPDF(inf)}>
+                        PDF
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" disabled={eliminarMutation.isPending} onClick={() => handleEliminar(inf)} className="text-red-600 hover:bg-red-50">
+                      Eliminar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop: table */}
+            <table className="hidden sm:table w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
                   <th className="px-4 py-3 font-medium">Paciente</th>
@@ -97,39 +137,22 @@ export default function MedicoDashboard() {
                     <td className="px-4 py-3">
                       <span className={[
                         "inline-block px-2 py-0.5 rounded text-xs font-medium",
-                        inf.estado === "finalizado"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-yellow-100 text-yellow-700",
+                        inf.estado === "finalizado" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700",
                       ].join(" ")}>
                         {inf.estado}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/medico/editar-informe/${inf.id}`)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/medico/editar-informe/${inf.id}`)}>
                           Editar
                         </Button>
                         {inf.estado === "finalizado" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            loading={downloadingId === inf.id}
-                            onClick={() => handleDescargarPDF(inf)}
-                          >
+                          <Button variant="ghost" size="sm" loading={downloadingId === inf.id} onClick={() => handleDescargarPDF(inf)}>
                             PDF
                           </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={eliminarMutation.isPending}
-                          onClick={() => handleEliminar(inf)}
-                          className="text-red-600 hover:bg-red-50"
-                        >
+                        <Button variant="ghost" size="sm" disabled={eliminarMutation.isPending} onClick={() => handleEliminar(inf)} className="text-red-600 hover:bg-red-50">
                           Eliminar
                         </Button>
                       </div>

@@ -9,4 +9,7 @@ export const authApi = {
 
   refresh: (refresh_token: string) =>
     api.post<LoginResponse>("/auth/refresh", { refresh_token }),
+
+  registro: (data: { email: string; password: string; nombre: string; apellido: string }) =>
+    api.post<LoginResponse>("/auth/registro", data),
 };

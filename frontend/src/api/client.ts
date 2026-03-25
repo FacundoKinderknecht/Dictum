@@ -54,7 +54,11 @@ async function request<T>(
   const data = await response.json().catch(() => ({ detail: "Error desconocido" }));
 
   if (!response.ok) {
-    throw new ApiError(response.status, data.detail ?? "Error del servidor");
+    const detail = data.detail ?? "Error del servidor";
+    if (response.status === 401 && detail === "sesion_desplazada") {
+      window.dispatchEvent(new CustomEvent("sesion-desplazada"));
+    }
+    throw new ApiError(response.status, detail);
   }
 
   return data as T;

@@ -1,3 +1,5 @@
+import base64
+import json
 import logging
 from collections.abc import Callable
 
@@ -9,6 +11,17 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 security = HTTPBearer()
+
+
+def _get_session_id(token: str) -> str | None:
+    try:
+        payload_b64 = token.split(".")[1]
+        padded = payload_b64 + "=" * (-len(payload_b64) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(padded))
+        val = payload.get("session_id") or payload.get("jti")
+        return str(val) if val else None
+    except Exception:
+        return None
 
 
 # ── Token validation ───────────────────────────────────────────────────────────
@@ -65,7 +78,7 @@ def get_current_user(
         client = get_supabase_for_user(token)
         result = (
             client.table("profiles")
-            .select("id, nombre, apellido, rol, activo")
+            .select("id, nombre, apellido, rol, activo, current_session_id")
             .eq("id", user_id)
             .single()
             .execute()
@@ -78,6 +91,16 @@ def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no encontrado")
     if not profile.get("activo"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cuenta desactivada")
+
+    # Single-session enforcement: si hay un session_id registrado, debe coincidir
+    stored_sid = profile.get("current_session_id")
+    if stored_sid:
+        token_sid = _get_session_id(token)
+        if token_sid and token_sid != stored_sid:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="sesion_desplazada",
+            )
 
     return {
         "id": user_id,

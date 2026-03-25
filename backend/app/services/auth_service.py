@@ -1,7 +1,22 @@
 """Lógica de autenticación contra Supabase Auth."""
+import base64
+import json
+
 from supabase import create_client
 
 from app.config import settings
+
+
+def _get_session_id(token: str) -> str | None:
+    """Extrae el session_id del payload JWT sin verificar firma."""
+    try:
+        payload_b64 = token.split(".")[1]
+        padded = payload_b64 + "=" * (-len(payload_b64) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(padded))
+        val = payload.get("session_id") or payload.get("jti")
+        return str(val) if val else None
+    except Exception:
+        return None
 
 
 def sign_in(email: str, password: str) -> dict:
@@ -20,7 +35,8 @@ def sign_in(email: str, password: str) -> dict:
         "access_token": response.session.access_token,
         "refresh_token": response.session.refresh_token,
         "expires_in": response.session.expires_in,
-        "user_id": response.user.id,
+        "user_id": str(response.user.id),
+        "session_id": _get_session_id(response.session.access_token),
     }
 
 
@@ -43,5 +59,6 @@ def refresh_session(refresh_token: str) -> dict:
         "access_token": response.session.access_token,
         "refresh_token": response.session.refresh_token,
         "expires_in": response.session.expires_in,
-        "user_id": response.user.id,
+        "user_id": str(response.user.id),
+        "session_id": _get_session_id(response.session.access_token),
     }
