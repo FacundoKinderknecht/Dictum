@@ -6,6 +6,9 @@ import MedicoDashboard from "./pages/medico/Dashboard";
 import Pacientes from "./pages/medico/Pacientes";
 import NuevoInforme from "./pages/medico/NuevoInforme";
 import EditarInforme from "./pages/medico/EditarInforme";
+import VerInforme from "./pages/medico/VerInforme";
+import PerfilPaciente from "./pages/medico/PerfilPaciente";
+import PerfilMedico from "./pages/medico/PerfilMedico";
 import ColaImpresion from "./pages/secretaria/ColaImpresion";
 import Usuarios from "./pages/admin/Usuarios";
 
@@ -53,6 +56,30 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute role="medico">
         <EditarInforme />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/medico/ver-informe/:id",
+    element: (
+      <ProtectedRoute role="medico">
+        <VerInforme />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/medico/paciente/:id",
+    element: (
+      <ProtectedRoute role="medico">
+        <PerfilPaciente />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/medico/perfil-medico/:id",
+    element: (
+      <ProtectedRoute role="medico">
+        <PerfilMedico />
       </ProtectedRoute>
     ),
   },

@@ -6,6 +6,8 @@ export const INFORMES_KEYS = {
   misInformes: ["informes", "mis-informes"] as const,
   finalizados: ["informes", "finalizados"] as const,
   detail: (id: string) => ["informes", id] as const,
+  porPaciente: (pacienteId: string) => ["informes", "paciente", pacienteId] as const,
+  porMedico: (medicoId: string) => ["informes", "medico", medicoId] as const,
 };
 
 export function useMisInformes() {
@@ -57,6 +59,22 @@ export function useFinalizarInforme() {
       qc.invalidateQueries({ queryKey: INFORMES_KEYS.detail(id) });
       qc.invalidateQueries({ queryKey: INFORMES_KEYS.misInformes });
     },
+  });
+}
+
+export function useInformesDelPaciente(pacienteId: string) {
+  return useQuery({
+    queryKey: INFORMES_KEYS.porPaciente(pacienteId),
+    queryFn: () => informesApi.listarPorPaciente(pacienteId),
+    enabled: !!pacienteId,
+  });
+}
+
+export function useInformesDelMedico(medicoId: string) {
+  return useQuery({
+    queryKey: INFORMES_KEYS.porMedico(medicoId),
+    queryFn: () => informesApi.listarPorMedico(medicoId),
+    enabled: !!medicoId,
   });
 }
 

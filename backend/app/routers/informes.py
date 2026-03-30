@@ -82,6 +82,30 @@ def crear_informe(
     return nuevo
 
 
+@router.get("/por-medico/{medico_id}", response_model=list[InformeConPaciente])
+def listar_informes_por_medico(
+    medico_id: str,
+    current_user: dict = Depends(_medico),
+) -> list[InformeConPaciente]:
+    """Retorna todos los informes de un médico específico."""
+    client = get_supabase_for_user(current_user["token"])
+
+    result = (
+        client.table("informes")
+        .select(
+            "*, "
+            "pacientes(nombre, apellido, dni, fecha_nacimiento), "
+            "profiles(nombre, apellido)"
+        )
+        .eq("medico_id", medico_id)
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    rows = result.data or []
+    return [_flatten_informe(r) for r in rows]
+
+
 @router.get("/{informe_id}", response_model=InformeConPaciente)
 def get_informe(
     informe_id: str,

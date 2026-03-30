@@ -56,6 +56,37 @@ def get_paciente(
     return result.data
 
 
+@router.get("/{paciente_id}/informes")
+def listar_informes_del_paciente(
+    paciente_id: str,
+    current_user: dict = Depends(_medico),
+) -> list[dict]:
+    """Retorna todos los informes de un paciente específico."""
+    from app.routers.informes import _flatten_informe
+
+    client = get_supabase_for_user(current_user["token"])
+
+    # Verificar que el paciente existe
+    pac = client.table("pacientes").select("id").eq("id", paciente_id).execute()
+    if not pac.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente no encontrado")
+
+    result = (
+        client.table("informes")
+        .select(
+            "*, "
+            "pacientes(nombre, apellido, dni, fecha_nacimiento), "
+            "profiles(nombre, apellido)"
+        )
+        .eq("paciente_id", paciente_id)
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    rows = result.data or []
+    return [_flatten_informe(r) for r in rows]
+
+
 @router.post("", response_model=PacienteOut, status_code=status.HTTP_201_CREATED)
 def crear_paciente(
     request: Request,

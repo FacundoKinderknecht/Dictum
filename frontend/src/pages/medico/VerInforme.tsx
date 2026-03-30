@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useInforme } from "../../hooks/useInformes";
+import { useAuth } from "../../hooks/useAuth";
 import { informesApi } from "../../api/informes";
 import { useState } from "react";
 import AppHeader from "../../components/ui/AppHeader";
@@ -9,8 +10,11 @@ import LoadingSpinner from "../../components/ui/LoadingSpinner";
 export default function VerInforme() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: informe, isLoading } = useInforme(id ?? "");
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  const esPropio = informe?.medico_id === user?.id;
 
   async function handleDescargarPDF() {
     if (!id) return;
@@ -53,6 +57,11 @@ export default function VerInforme() {
         subtitle={informe.estado === "finalizado" ? "Finalizado" : "Borrador"}
         actions={
           <>
+            {esPropio && informe.estado === "borrador" && (
+              <Button size="sm" variant="secondary" onClick={() => navigate(`/medico/editar-informe/${informe.id}`)}>
+                Editar
+              </Button>
+            )}
             {informe.estado === "finalizado" && (
               <Button size="sm" variant="secondary" loading={downloadingPdf} onClick={handleDescargarPDF}>
                 Descargar PDF
