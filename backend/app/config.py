@@ -10,6 +10,12 @@ class Settings(BaseSettings):
     allowed_origins: str
     environment: str = "development"
 
+    # Azure OneDrive (Microsoft Graph)
+    azure_tenant_id: str = ""
+    azure_client_id: str = ""
+    azure_client_secret: str = ""
+    azure_onedrive_user: str = ""  # email o user ID del dueño del OneDrive
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

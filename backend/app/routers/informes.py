@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 
 from app.dependencies import get_client_ip, get_supabase_for_user, require_role
 
@@ -8,6 +8,8 @@ logger = logging.getLogger(__name__)
 from app.schemas.informe import InformeConPaciente, InformeCreate, InformeOut, InformeUpdate
 from app.services import audit_service
 from app.services.informe_service import assert_borrador, get_informe_or_404
+from app.services.pdf_service import generar_pdf
+from app.services.onedrive_service import subir_pdf_onedrive
 
 router = APIRouter()
 
@@ -179,6 +181,7 @@ def actualizar_informe(
 @router.post("/{informe_id}/finalizar", response_model=InformeOut)
 def finalizar_informe(
     request: Request,
+    background_tasks: BackgroundTasks,
     informe_id: str,
     current_user: dict = Depends(_medico),
 ) -> InformeOut:
@@ -208,7 +211,20 @@ def finalizar_informe(
         ip_address=get_client_ip(request),
     )
 
-    return result.data[0]
+    finalizado = result.data[0]
+
+    # Subir PDF a OneDrive en background (no bloquea la respuesta)
+    try:
+        pac_row = client.table("pacientes").select("*").eq("id", finalizado["paciente_id"]).single().execute()
+        med_row = client.table("profiles").select("nombre, apellido").eq("id", current_user["id"]).single().execute()
+        paciente = pac_row.data or {}
+        medico   = med_row.data or {}
+        pdf_bytes = generar_pdf(informe=finalizado, paciente=paciente, medico=medico)
+        background_tasks.add_task(subir_pdf_onedrive, pdf_bytes, finalizado, paciente)
+    except Exception as exc:
+        logger.warning("No se pudo preparar el PDF para OneDrive: %s", exc)
+
+    return finalizado
 
 
 @router.delete("/{informe_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -17,10 +17,33 @@ export interface InformesListaProps {
   emptyMessage?: string;
 }
 
-function parseFecha(input: string): string | null {
-  const m = input.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!m) return null;
-  return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+/** Coincidencia parcial de fecha. fechaISO = "YYYY-MM-DD", q = input del usuario */
+function matchesFecha(fechaISO: string, q: string): boolean {
+  const [year, month, day] = fechaISO.split("-");
+  const parts = q.split("/");
+  const allDigits = (s: string) => /^\d+$/.test(s);
+
+  if (parts.length === 1) {
+    if (!allDigits(q)) return false;
+    if (q.length === 4) return year === q;                       // 2026
+    const p = q.padStart(2, "0");
+    if (day === p) return true;                                  // dd
+    if (parseInt(q) <= 12 && month === p) return true;          // mm (ambiguo)
+    return false;
+  }
+  if (parts.length === 2) {
+    const [a, b] = parts;
+    if (!allDigits(a) || !allDigits(b)) return false;
+    if (b.length === 4) return month === a.padStart(2, "0") && year === b;  // mm/yyyy
+    return day === a.padStart(2, "0") && month === b.padStart(2, "0");       // dd/mm
+  }
+  if (parts.length === 3) {
+    const [d, m, y] = parts;
+    if (!allDigits(d) || !allDigits(m) || !allDigits(y)) return false;
+    const yearMatch = y.length === 4 ? year === y : year.endsWith(y);       // dd/mm/yyyy o dd/mm/yy
+    return day === d.padStart(2, "0") && month === m.padStart(2, "0") && yearMatch;
+  }
+  return false;
 }
 
 export default function InformesLista({
@@ -44,12 +67,11 @@ export default function InformesLista({
   const filtrados = useMemo(() => {
     if (!busqueda.trim()) return base;
     const q = busqueda.toLowerCase().trim();
-    const fechaISO = parseFecha(q);
     return base.filter((i) => {
-      const texto = `${i.paciente_nombre} ${i.paciente_apellido} ${i.paciente_dni} ${i.tipo_estudio}`
+      const texto = `${i.paciente_nombre} ${i.paciente_apellido} ${i.paciente_dni} ${i.tipo_estudio} ${i.medico_nombre} ${i.medico_apellido}`
         .toLowerCase();
       if (texto.includes(q)) return true;
-      if (fechaISO && i.fecha_estudio === fechaISO) return true;
+      if (/[\d/]/.test(q) && matchesFecha(i.fecha_estudio, q)) return true;
       return false;
     });
   }, [base, busqueda]);
@@ -88,7 +110,7 @@ export default function InformesLista({
           type="text"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar por paciente, DNI, tipo de estudio o fecha (ej: 30/3/2026)..."
+          placeholder="Buscar por paciente, DNI, médico, tipo de estudio o fecha (ej: 30, 30/3, 3/2026, 2026)..."
           className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 pr-9 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
         {busqueda && (
