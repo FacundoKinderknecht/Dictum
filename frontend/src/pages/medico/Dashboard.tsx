@@ -16,15 +16,26 @@ export default function MedicoDashboard() {
   const [busqueda, setBusqueda] = useState("");
   const eliminarMutation = useEliminarInforme();
 
+  function parseFecha(input: string): string | null {
+    const m = input.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!m) return null;
+    const day = m[1].padStart(2, "0");
+    const month = m[2].padStart(2, "0");
+    return `${m[3]}-${month}-${day}`;
+  }
+
   const informesFiltrados = useMemo(() => {
     if (!busqueda.trim()) return informes ?? [];
-    const q = busqueda.toLowerCase();
+    const q = busqueda.toLowerCase().trim();
+    const fechaISO = parseFecha(q);
     return (
-      informes?.filter((i) =>
-        `${i.paciente_nombre} ${i.paciente_apellido} ${i.paciente_dni} ${i.tipo_estudio}`
-          .toLowerCase()
-          .includes(q)
-      ) ?? []
+      informes?.filter((i) => {
+        const texto = `${i.paciente_nombre} ${i.paciente_apellido} ${i.paciente_dni} ${i.tipo_estudio}`
+          .toLowerCase();
+        if (texto.includes(q)) return true;
+        if (fechaISO && i.fecha_estudio === fechaISO) return true;
+        return false;
+      }) ?? []
     );
   }, [informes, busqueda]);
 

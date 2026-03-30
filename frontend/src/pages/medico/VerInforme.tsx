@@ -57,7 +57,7 @@ export default function VerInforme() {
         subtitle={informe.estado === "finalizado" ? "Finalizado" : "Borrador"}
         actions={
           <>
-            {esPropio && informe.estado === "borrador" && (
+            {esPropio && (
               <Button size="sm" variant="secondary" onClick={() => navigate(`/medico/editar-informe/${informe.id}`)}>
                 Editar
               </Button>
