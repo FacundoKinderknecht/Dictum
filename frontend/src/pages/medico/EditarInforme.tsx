@@ -11,7 +11,6 @@ import Button from "../../components/ui/Button";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import type { InformeCreate, InformeUpdate } from "../../types";
 import { ApiError } from "../../api/client";
-import { informesApi } from "../../api/informes";
 
 export default function EditarInforme() {
   const { id } = useParams<{ id: string }>();
