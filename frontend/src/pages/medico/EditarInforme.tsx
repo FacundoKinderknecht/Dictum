@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pacientesApi } from "../../api/pacientes";
 import { informesApi } from "../../api/informes";
@@ -15,18 +15,12 @@ import { ApiError } from "../../api/client";
 export default function EditarInforme() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [deletingPath, setDeletingPath] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{ url: string; nombre: string } | null>(null);
-  const [cambiandoPaciente, setCambiandoPaciente] = useState(false);
-  const [cancelando, setCancelando] = useState(false);
-
-  // Si viene de NuevoInforme, es un borrador recién creado
-  const isNew = (location.state as { isNew?: boolean } | null)?.isNew ?? false;
 
   const { data: informe, isLoading: loadingInforme } = useInforme(id ?? "");
   const { data: paciente, isLoading: loadingPaciente } = useQuery({
@@ -80,33 +74,6 @@ export default function EditarInforme() {
     }
   }
 
-  // Cancelar: si es nuevo borra el borrador, si es existente solo vuelve
-  async function handleCancelar() {
-    if (!isNew) {
-      navigate("/medico/mis-informes");
-      return;
-    }
-    setCancelando(true);
-    try {
-      await informesApi.eliminar(id!);
-    } catch {
-      // Si no se pudo borrar, igual volvemos
-    }
-    navigate("/medico/nuevo-informe");
-  }
-
-  // Cambiar paciente: siempre borra el borrador y vuelve a la selección
-  async function handleCambiarPaciente() {
-    if (!confirm("¿Cambiar de paciente? Se eliminará este borrador.")) return;
-    setCambiandoPaciente(true);
-    try {
-      await informesApi.eliminar(id!);
-    } catch {
-      // Si no se pudo borrar, igual navegamos
-    }
-    navigate("/medico/nuevo-informe");
-  }
-
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !id) return;
@@ -147,18 +114,8 @@ export default function EditarInforme() {
         actions={
           <div className="flex items-center gap-2 flex-wrap justify-end">
             {estadoBadge}
-            {informe.estado === "borrador" && (
-              <Button
-                variant="ghost"
-                size="sm"
-                loading={cambiandoPaciente}
-                onClick={handleCambiarPaciente}
-              >
-                Cambiar paciente
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" loading={cancelando} onClick={handleCancelar}>
-              {isNew ? "✕ Cancelar" : "← Volver"}
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+              ← Volver
             </Button>
           </div>
         }
@@ -185,7 +142,7 @@ export default function EditarInforme() {
             onFinalizar={informe.estado === "borrador" ? handleFinalizar : undefined}
             showFinalizarButton={informe.estado === "borrador"}
             guardarLabel={informe.estado === "finalizado" ? "Guardar cambios" : "Guardar borrador"}
-            onCancel={handleCancelar}
+            onCancel={() => navigate(-1)}
             isSubmitting={isSubmitting}
           />
         </div>
