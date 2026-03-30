@@ -23,9 +23,10 @@ export default function EditarInforme() {
   const [deletingPath, setDeletingPath] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{ url: string; nombre: string } | null>(null);
   const [cambiandoPaciente, setCambiandoPaciente] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
 
-  // Destino al cancelar: volver a donde veníamos si es posible, sino mis-informes
-  const destino = (location.state as { from?: string } | null)?.from ?? "/medico/mis-informes";
+  // Si viene de NuevoInforme, es un borrador recién creado
+  const isNew = (location.state as { isNew?: boolean } | null)?.isNew ?? false;
 
   const { data: informe, isLoading: loadingInforme } = useInforme(id ?? "");
   const { data: paciente, isLoading: loadingPaciente } = useQuery({
@@ -62,7 +63,7 @@ export default function EditarInforme() {
     setError(null);
     try {
       await actualizarMutation.mutateAsync(data as InformeUpdate);
-      navigate(destino);
+      navigate("/medico/mis-informes");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al guardar");
     }
@@ -73,22 +74,37 @@ export default function EditarInforme() {
     try {
       await actualizarMutation.mutateAsync(data as InformeUpdate);
       await informesApi.finalizar(id!);
-      navigate(destino);
+      navigate("/medico/mis-informes");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al finalizar");
     }
   }
 
+  // Cancelar: si es nuevo borra el borrador, si es existente solo vuelve
+  async function handleCancelar() {
+    if (!isNew) {
+      navigate("/medico/mis-informes");
+      return;
+    }
+    setCancelando(true);
+    try {
+      await informesApi.eliminar(id!);
+    } catch {
+      // Si no se pudo borrar, igual volvemos
+    }
+    navigate("/medico/nuevo-informe");
+  }
+
+  // Cambiar paciente: siempre borra el borrador y vuelve a la selección
   async function handleCambiarPaciente() {
-    if (!confirm("¿Cambiar de paciente? Se eliminará este borrador y podrás seleccionar uno nuevo.")) return;
+    if (!confirm("¿Cambiar de paciente? Se eliminará este borrador.")) return;
     setCambiandoPaciente(true);
     try {
       await informesApi.eliminar(id!);
-      navigate("/medico/nuevo-informe");
     } catch {
-      setError("No se pudo eliminar el borrador.");
-      setCambiandoPaciente(false);
+      // Si no se pudo borrar, igual navegamos
     }
+    navigate("/medico/nuevo-informe");
   }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -141,7 +157,9 @@ export default function EditarInforme() {
                 Cambiar paciente
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={() => navigate(destino)}>← Volver</Button>
+            <Button variant="ghost" size="sm" loading={cancelando} onClick={handleCancelar}>
+              {isNew ? "✕ Cancelar" : "← Volver"}
+            </Button>
           </div>
         }
       />
@@ -167,7 +185,7 @@ export default function EditarInforme() {
             onFinalizar={informe.estado === "borrador" ? handleFinalizar : undefined}
             showFinalizarButton={informe.estado === "borrador"}
             guardarLabel={informe.estado === "finalizado" ? "Guardar cambios" : "Guardar borrador"}
-            onCancel={() => navigate(destino)}
+            onCancel={handleCancelar}
             isSubmitting={isSubmitting}
           />
         </div>
