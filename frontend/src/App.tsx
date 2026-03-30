@@ -21,9 +21,18 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 });
 
+function getIdFromToken(token: string): string {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return payload.sub ?? "";
+  } catch {
+    return "";
+  }
+}
+
 function buildUser(res: LoginResponse): AuthUser {
   return {
-    id: "",
+    id: getIdFromToken(res.access_token),
     nombre: res.nombre,
     apellido: res.apellido,
     rol: res.rol as UserRole,
