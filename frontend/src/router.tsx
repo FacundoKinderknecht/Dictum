@@ -3,6 +3,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Registro from "./pages/Registro";
 import MedicoDashboard from "./pages/medico/Dashboard";
+import Informes from "./pages/medico/Informes";
+import MisInformes from "./pages/medico/MisInformes";
 import Pacientes from "./pages/medico/Pacientes";
 import NuevoInforme from "./pages/medico/NuevoInforme";
 import EditarInforme from "./pages/medico/EditarInforme";
@@ -32,6 +34,22 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute role="medico">
         <MedicoDashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/medico/informes",
+    element: (
+      <ProtectedRoute role="medico">
+        <Informes />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/medico/mis-informes",
+    element: (
+      <ProtectedRoute role="medico">
+        <MisInformes />
       </ProtectedRoute>
     ),
   },

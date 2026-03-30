@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { pacientesApi } from "../../api/pacientes";
 import AppHeader from "../../components/ui/AppHeader";
@@ -115,7 +115,7 @@ export default function Pacientes() {
         actions={
           <>
             <Button variant="ghost" size="sm" onClick={() => navigate("/medico/dashboard")}>
-              ← Volver
+              ← Inicio
             </Button>
             <Button size="sm" onClick={() => { setMostrarFormulario(true); setEditando(null); }}>
               + Nuevo paciente
@@ -186,7 +186,9 @@ export default function Pacientes() {
           {pacientes?.map((p) => (
             <div key={p.id} className="bg-white border border-gray-200 rounded-xl px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-medium text-gray-800">{p.apellido}, {p.nombre}</p>
+                <Link to={`/medico/paciente/${p.id}`} className="font-medium text-gray-800 hover:text-blue-600 hover:underline">
+                  {p.apellido}, {p.nombre}
+                </Link>
                 <p className="text-sm text-gray-500 truncate">
                   DNI {p.dni}
                   {p.fecha_nacimiento && ` · ${new Date(p.fecha_nacimiento + "T00:00:00").toLocaleDateString("es-AR")}`}
