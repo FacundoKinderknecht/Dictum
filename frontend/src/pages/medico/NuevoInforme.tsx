@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, useSearchParams, useLocation, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { pacientesApi } from "../../api/pacientes";
 import { useCrearInforme } from "../../hooks/useInformes";
@@ -20,23 +20,27 @@ export default function NuevoInforme() {
   const [error, setError] = useState<string | null>(null);
   const [creandoParaId, setCreandoParaId] = useState<string | null>(null);
 
-  // Si viene de la página de pacientes con state, usarlo directamente
+  // Paciente pre-seleccionado (desde state de navegación)
   const pacienteDesdeState = (location.state as { paciente?: Paciente } | null)?.paciente ?? null;
 
   const crearMutation = useCrearInforme();
-  const creacionIniciada = useRef(false);
 
+  // Buscar todos los pacientes para la búsqueda manual
   const { data: pacientes, isLoading: buscando } = useQuery({
     queryKey: ["pacientes", busqueda],
     queryFn: () => pacientesApi.buscar(busqueda || undefined),
     enabled: !pacienteIdParam && !pacienteDesdeState,
   });
 
-  const { data: pacienteDirecto } = useQuery({
+  // Obtener datos del paciente cuando viene por URL param
+  const { data: pacientePorId, isLoading: cargandoPaciente } = useQuery({
     queryKey: ["paciente", pacienteIdParam],
     queryFn: () => pacientesApi.getById(pacienteIdParam!),
-    enabled: !!pacienteIdParam,
+    enabled: !!pacienteIdParam && !pacienteDesdeState,
   });
+
+  // El paciente pre-seleccionado (por state o por URL param)
+  const pacientePreseleccionado = pacienteDesdeState ?? pacientePorId ?? null;
 
   async function crearInforme(paciente: Paciente) {
     setCreandoParaId(paciente.id);
@@ -48,57 +52,91 @@ export default function NuevoInforme() {
         tipo_estudio: "Ecografía Abdominal",
         fecha_estudio: hoy,
       });
-      navigate(`/medico/editar-informe/${informe.id}`);
+      navigate(`/medico/editar-informe/${informe.id}`, { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al crear el informe");
       setCreandoParaId(null);
     }
   }
 
-  // Auto-crear si viene con paciente en state
-  useEffect(() => {
-    if (pacienteDesdeState && !creacionIniciada.current) {
-      creacionIniciada.current = true;
-      crearInforme(pacienteDesdeState);
+  // ── Vista: paciente pre-seleccionado ────────────────────────────────────────
+  if (pacienteIdParam || pacienteDesdeState) {
+    if (cargandoPaciente) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <LoadingSpinner />
+        </div>
+      );
     }
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-crear si viene con paciente_id en URL
-  useEffect(() => {
-    if (pacienteDirecto && !pacienteDesdeState && !creacionIniciada.current) {
-      creacionIniciada.current = true;
-      crearInforme(pacienteDirecto);
-    }
-  }, [pacienteDirecto]);  // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Mientras se auto-crea (desde state o URL param), mostrar spinner
-  if (pacienteDesdeState || pacienteIdParam) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        {error ? (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-4 py-3">
-            {error}
-          </p>
-        ) : (
-          <LoadingSpinner text="Creando informe..." />
-        )}
+      <div className="min-h-screen bg-gray-50">
+        <AppHeader
+          title="Nuevo informe"
+          actions={
+            <Button variant="ghost" size="sm" onClick={() => navigate("/medico/mis-informes")}>
+              ← Cancelar
+            </Button>
+          }
+        />
+
+        <main className="max-w-md mx-auto px-4 sm:px-6 py-10 space-y-4">
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+              {error}
+            </p>
+          )}
+
+          {pacientePreseleccionado ? (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5">
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1">
+                  Paciente seleccionado
+                </p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {pacientePreseleccionado.apellido}, {pacientePreseleccionado.nombre}
+                </p>
+                <p className="text-sm text-gray-500">DNI {pacientePreseleccionado.dni}</p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Button
+                  loading={!!creandoParaId}
+                  onClick={() => crearInforme(pacientePreseleccionado)}
+                  className="w-full justify-center"
+                >
+                  Crear informe para este paciente
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => navigate("/medico/nuevo-informe")}
+                  className="w-full justify-center"
+                >
+                  Elegir otro paciente
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 text-center py-8">Paciente no encontrado.</p>
+          )}
+        </main>
       </div>
     );
   }
 
-  // Pantalla de búsqueda manual
+  // ── Vista: búsqueda manual de paciente ──────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50">
       <AppHeader
         title="Nuevo informe"
         actions={
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            ← Volver
+          <Button variant="ghost" size="sm" onClick={() => navigate("/medico/mis-informes")}>
+            ← Cancelar
           </Button>
         }
       />
 
-      <main className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
         {error && (
           <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
             {error}
@@ -114,39 +152,29 @@ export default function NuevoInforme() {
           />
           {buscando && <LoadingSpinner text="Buscando..." />}
           <div className="space-y-2">
-            {pacientes
-              ?.filter(
-                (p) =>
-                  !busqueda ||
-                  `${p.apellido} ${p.nombre} ${p.dni}`
-                    .toLowerCase()
-                    .includes(busqueda.toLowerCase()),
-              )
-              .map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => crearInforme(p)}
-                  disabled={!!creandoParaId}
-                  className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-60"
-                >
-                  {creandoParaId === p.id ? (
-                    <p className="text-sm text-gray-500">Creando informe...</p>
-                  ) : (
-                    <>
-                      <p className="font-medium text-gray-800">
-                        {p.apellido}, {p.nombre}
-                      </p>
-                      <p className="text-sm text-gray-500">DNI {p.dni}</p>
-                    </>
-                  )}
-                </button>
-              ))}
+            {pacientes?.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => crearInforme(p)}
+                disabled={!!creandoParaId}
+                className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-60 active:scale-[0.99]"
+              >
+                {creandoParaId === p.id ? (
+                  <p className="text-sm text-gray-500">Creando informe...</p>
+                ) : (
+                  <>
+                    <p className="font-medium text-gray-800">{p.apellido}, {p.nombre}</p>
+                    <p className="text-sm text-gray-500">DNI {p.dni}</p>
+                  </>
+                )}
+              </button>
+            ))}
           </div>
           <p className="text-sm text-gray-500">
             ¿No encontrás el paciente?{" "}
-            <a href="/medico/pacientes?nuevo=1" className="text-idm hover:underline">
+            <Link to="/medico/pacientes?nuevo=1" className="text-blue-600 hover:underline">
               Crear paciente nuevo
-            </a>
+            </Link>
           </p>
         </div>
       </main>

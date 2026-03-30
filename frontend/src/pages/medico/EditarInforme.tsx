@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pacientesApi } from "../../api/pacientes";
 import { informesApi } from "../../api/informes";
@@ -11,16 +11,22 @@ import Button from "../../components/ui/Button";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import type { InformeCreate, InformeUpdate } from "../../types";
 import { ApiError } from "../../api/client";
+import { informesApi } from "../../api/informes";
 
 export default function EditarInforme() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [deletingPath, setDeletingPath] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{ url: string; nombre: string } | null>(null);
+  const [cambiandoPaciente, setCambiandoPaciente] = useState(false);
+
+  // Destino al cancelar: volver a donde veníamos si es posible, sino mis-informes
+  const destino = (location.state as { from?: string } | null)?.from ?? "/medico/mis-informes";
 
   const { data: informe, isLoading: loadingInforme } = useInforme(id ?? "");
   const { data: paciente, isLoading: loadingPaciente } = useQuery({
@@ -57,7 +63,7 @@ export default function EditarInforme() {
     setError(null);
     try {
       await actualizarMutation.mutateAsync(data as InformeUpdate);
-      navigate("/medico/dashboard");
+      navigate(destino);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al guardar");
     }
@@ -68,9 +74,21 @@ export default function EditarInforme() {
     try {
       await actualizarMutation.mutateAsync(data as InformeUpdate);
       await informesApi.finalizar(id!);
-      navigate("/medico/dashboard");
+      navigate(destino);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al finalizar");
+    }
+  }
+
+  async function handleCambiarPaciente() {
+    if (!confirm("¿Cambiar de paciente? Se eliminará este borrador y podrás seleccionar uno nuevo.")) return;
+    setCambiandoPaciente(true);
+    try {
+      await informesApi.eliminar(id!);
+      navigate("/medico/nuevo-informe");
+    } catch {
+      setError("No se pudo eliminar el borrador.");
+      setCambiandoPaciente(false);
     }
   }
 
@@ -112,9 +130,19 @@ export default function EditarInforme() {
         title="Editar informe"
         subtitle={`${informe.paciente_apellido}, ${informe.paciente_nombre} — ${informe.tipo_estudio}`}
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {estadoBadge}
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>← Volver</Button>
+            {informe.estado === "borrador" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                loading={cambiandoPaciente}
+                onClick={handleCambiarPaciente}
+              >
+                Cambiar paciente
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => navigate(destino)}>← Volver</Button>
           </div>
         }
       />
@@ -140,7 +168,7 @@ export default function EditarInforme() {
             onFinalizar={informe.estado === "borrador" ? handleFinalizar : undefined}
             showFinalizarButton={informe.estado === "borrador"}
             guardarLabel={informe.estado === "finalizado" ? "Guardar cambios" : "Guardar borrador"}
-            onCancel={() => navigate(-1)}
+            onCancel={() => navigate(destino)}
             isSubmitting={isSubmitting}
           />
         </div>
