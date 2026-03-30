@@ -37,7 +37,7 @@ export default function PerfilMedico() {
   const medicoNombre =
     informes && informes.length > 0
       ? `Dr/a. ${informes[0].medico_apellido}, ${informes[0].medico_nombre}`
-      : id === user?.id
+      : id === user?.id && user
       ? `Dr/a. ${user.apellido}, ${user.nombre}`
       : "Médico";
 
