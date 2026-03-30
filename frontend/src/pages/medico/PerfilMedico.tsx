@@ -54,8 +54,8 @@ export default function PerfilMedico() {
   return (
     <div className="min-h-screen bg-gray-50">
       <AppHeader
-        title={medicoNombre}
-        subtitle={esPropioMedico ? "Tus informes" : "Informes del médico"}
+        title={esPropioMedico ? "Mis informes" : "Perfil médico"}
+        subtitle={medicoNombre}
         actions={
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>← Volver</Button>
         }
