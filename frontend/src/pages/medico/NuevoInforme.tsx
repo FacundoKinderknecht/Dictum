@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { pacientesApi } from "../../api/pacientes";
 import { informesApi } from "../../api/informes";
+import { imagenesApi } from "../../api/imagenes";
 import { useCrearInforme } from "../../hooks/useInformes";
 import AppHeader from "../../components/ui/AppHeader";
 import Button from "../../components/ui/Button";
@@ -19,11 +20,12 @@ export default function NuevoInforme() {
 
   const [busqueda, setBusqueda] = useState("");
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState<Paciente | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const crearMutation = useCrearInforme();
 
-  // Si viene con paciente_id en URL, pre-cargar el paciente en state
   const { data: pacienteDirecto, isLoading: loadingPacienteDirecto } = useQuery({
     queryKey: ["paciente", pacienteIdParam],
     queryFn: () => pacientesApi.getById(pacienteIdParam!),
@@ -42,10 +44,28 @@ export default function NuevoInforme() {
     enabled: !pacienteSeleccionado,
   });
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setPendingFiles((prev) => [...prev, ...files]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function removeFile(index: number) {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function uploadPendingFiles(informeId: string) {
+    for (const file of pendingFiles) {
+      await imagenesApi.subir(informeId, file);
+    }
+  }
+
   async function handleGuardar(data: InformeCreate | InformeUpdate) {
     setError(null);
     try {
-      await crearMutation.mutateAsync(data as InformeCreate);
+      const informe = await crearMutation.mutateAsync(data as InformeCreate);
+      if (pendingFiles.length > 0) await uploadPendingFiles(informe.id);
       navigate("/medico/mis-informes");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al guardar");
@@ -56,6 +76,7 @@ export default function NuevoInforme() {
     setError(null);
     try {
       const informe = await crearMutation.mutateAsync(data as InformeCreate);
+      if (pendingFiles.length > 0) await uploadPendingFiles(informe.id);
       await informesApi.finalizar(informe.id);
       navigate("/medico/mis-informes");
     } catch (err) {
@@ -63,7 +84,6 @@ export default function NuevoInforme() {
     }
   }
 
-  // Spinner mientras carga paciente desde URL param
   if (pacienteIdParam && loadingPacienteDirecto) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -122,29 +142,92 @@ export default function NuevoInforme() {
             </p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                Datos del informe
-              </h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setPacienteSeleccionado(null)}
-                disabled={crearMutation.isPending}
-              >
-                Cambiar paciente
-              </Button>
+          <>
+            {/* Formulario */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                  Datos del informe
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPacienteSeleccionado(null)}
+                  disabled={crearMutation.isPending}
+                >
+                  Cambiar paciente
+                </Button>
+              </div>
+              <InformeForm
+                paciente={pacienteSeleccionado}
+                onGuardar={handleGuardar}
+                onFinalizar={handleFinalizar}
+                onCancel={() => navigate(-1)}
+                isSubmitting={crearMutation.isPending}
+                guardarLabel="Guardar borrador"
+              />
             </div>
-            <InformeForm
-              paciente={pacienteSeleccionado}
-              onGuardar={handleGuardar}
-              onFinalizar={handleFinalizar}
-              onCancel={() => navigate(-1)}
-              isSubmitting={crearMutation.isPending}
-              guardarLabel="Guardar borrador"
-            />
-          </div>
+
+            {/* Imágenes */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                  Imágenes
+                </h2>
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={crearMutation.isPending}
+                  >
+                    Agregar imagen
+                  </Button>
+                </>
+              </div>
+
+              {pendingFiles.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">
+                  Sin imágenes. Se adjuntarán al guardar.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {pendingFiles.map((file, i) => {
+                    const url = URL.createObjectURL(file);
+                    return (
+                      <div
+                        key={i}
+                        className="relative group rounded-lg overflow-hidden border border-gray-200"
+                      >
+                        <img
+                          src={url}
+                          alt={file.name}
+                          className="w-full h-32 object-cover"
+                          onLoad={() => URL.revokeObjectURL(url)}
+                        />
+                        <button
+                          onClick={() => removeFile(i)}
+                          disabled={crearMutation.isPending}
+                          className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                        >
+                          Quitar
+                        </button>
+                        <p className="text-xs text-gray-500 truncate px-2 py-1">{file.name}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </>
         )}
       </main>
     </div>

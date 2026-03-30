@@ -164,25 +164,22 @@ export default function InformeForm({
       </div>
 
       {/* Acciones */}
-      <div className="flex items-center justify-between pt-2">
-        <div className="flex items-center gap-2">
-          <Button type="submit" loading={isSubmitting}>
-            {guardarLabel}
-          </Button>
-          <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
-            Cancelar
-          </Button>
-        </div>
+      <div className="flex items-center gap-2 pt-2 flex-wrap">
         {showFinalizarButton && onFinalizar && (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={handleFinalizarClick}
-            disabled={isSubmitting}
-          >
+          <Button type="button" onClick={handleFinalizarClick} disabled={isSubmitting} loading={isSubmitting}>
             Guardar y finalizar →
           </Button>
         )}
+        <Button
+          type="submit"
+          variant={showFinalizarButton ? "secondary" : "primary"}
+          loading={isSubmitting}
+        >
+          {guardarLabel}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
+          Cancelar
+        </Button>
       </div>
     </form>
   );
