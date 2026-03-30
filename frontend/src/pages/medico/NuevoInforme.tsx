@@ -19,6 +19,7 @@ export default function NuevoInforme() {
   const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [creandoParaId, setCreandoParaId] = useState<string | null>(null);
+  const [seleccionado, setSeleccionado] = useState<Paciente | null>(null);
 
   // Paciente pre-seleccionado (desde state de navegación)
   const pacienteDesdeState = (location.state as { paciente?: Paciente } | null)?.paciente ?? null;
@@ -151,25 +152,37 @@ export default function NuevoInforme() {
             onChange={(e) => setBusqueda(e.target.value)}
           />
           {buscando && <LoadingSpinner text="Buscando..." />}
-          <div className="space-y-2">
-            {pacientes?.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => crearInforme(p)}
-                disabled={!!creandoParaId}
-                className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-60 active:scale-[0.99]"
-              >
-                {creandoParaId === p.id ? (
-                  <p className="text-sm text-gray-500">Creando informe...</p>
-                ) : (
-                  <>
-                    <p className="font-medium text-gray-800">{p.apellido}, {p.nombre}</p>
-                    <p className="text-sm text-gray-500">DNI {p.dni}</p>
-                  </>
-                )}
-              </button>
-            ))}
-          </div>
+          {/* Confirmación de paciente seleccionado */}
+          {seleccionado ? (
+            <div className="border border-blue-200 bg-blue-50 rounded-lg p-4 space-y-3">
+              <div>
+                <p className="text-xs text-blue-500 font-medium uppercase tracking-wide mb-0.5">Paciente seleccionado</p>
+                <p className="font-semibold text-gray-900">{seleccionado.apellido}, {seleccionado.nombre}</p>
+                <p className="text-sm text-gray-500">DNI {seleccionado.dni}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button loading={!!creandoParaId} onClick={() => crearInforme(seleccionado)}>
+                  Crear informe
+                </Button>
+                <Button variant="ghost" onClick={() => setSeleccionado(null)} disabled={!!creandoParaId}>
+                  Cambiar paciente
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {pacientes?.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setSeleccionado(p)}
+                  className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors active:scale-[0.99]"
+                >
+                  <p className="font-medium text-gray-800">{p.apellido}, {p.nombre}</p>
+                  <p className="text-sm text-gray-500">DNI {p.dni}</p>
+                </button>
+              ))}
+            </div>
+          )}
           <p className="text-sm text-gray-500">
             ¿No encontrás el paciente?{" "}
             <Link to="/medico/pacientes?nuevo=1" className="text-blue-600 hover:underline">
