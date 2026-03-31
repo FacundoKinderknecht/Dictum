@@ -47,13 +47,30 @@ def subir_pdf_onedrive(pdf_bytes: bytes, informe: dict, paciente: dict) -> None:
         return
 
     try:
+        # Verificar que el drive existe (e inicializarlo si no)
+        drive_url = f"{GRAPH_BASE}/users/{settings.azure_onedrive_user}/drive"
+        check = httpx.get(
+            drive_url,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10,
+        )
+        if check.status_code == 404:
+            logger.error(
+                "OneDrive: el usuario '%s' no tiene OneDrive o falta el permiso "
+                "'Files.ReadWrite.All' (Application) con admin consent en Azure. "
+                "Status: %s — %s",
+                settings.azure_onedrive_user, check.status_code, check.text,
+            )
+            return
+        check.raise_for_status()
+
         fecha = str(informe.get("fecha_estudio", "") or "")
         partes = fecha.split("-")
         year  = partes[0] if len(partes) > 0 else "sin-fecha"
         month = partes[1] if len(partes) > 1 else "00"
 
-        apellido  = (paciente.get("apellido") or "Desconocido").replace("/", "-").replace("\\", "-")
-        tipo      = (informe.get("tipo_estudio") or "informe").replace("/", "-").replace("\\", "-")[:40]
+        apellido   = (paciente.get("apellido") or "Desconocido").replace("/", "-").replace("\\", "-")
+        tipo       = (informe.get("tipo_estudio") or "informe").replace("/", "-").replace("\\", "-")[:40]
         informe_id = str(informe.get("id", ""))[:8]
         filename   = f"{tipo}_{informe_id}.pdf"
         path       = f"Informes IDM/{year}/{month}/{apellido}/{filename}"
@@ -72,7 +89,12 @@ def subir_pdf_onedrive(pdf_bytes: bytes, informe: dict, paciente: dict) -> None:
             },
             timeout=60,
         )
-        resp.raise_for_status()
+        if not resp.is_success:
+            logger.error(
+                "OneDrive: upload falló (informe=%s, path=%s): %s — %s",
+                informe.get("id"), path, resp.status_code, resp.text,
+            )
+            return
         logger.info("PDF subido a OneDrive: %s", path)
 
     except Exception as exc:
