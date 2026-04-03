@@ -10,11 +10,10 @@ class Settings(BaseSettings):
     allowed_origins: str
     environment: str = "development"
 
-    # Azure OneDrive (Microsoft Graph)
-    azure_tenant_id: str = ""
+    # Azure OneDrive personal (Microsoft Graph — delegated auth)
     azure_client_id: str = ""
     azure_client_secret: str = ""
-    azure_onedrive_user: str = ""  # email o user ID del dueño del OneDrive
+    azure_refresh_token: str = ""  # obtenido con scripts/get_onedrive_token.py
 
     model_config = SettingsConfigDict(
         env_file=".env",
