@@ -9,7 +9,7 @@ from app.schemas.informe import InformeConPaciente, InformeCreate, InformeOut, I
 from app.services import audit_service
 from app.services.informe_service import assert_borrador, get_informe_or_404
 from app.services.pdf_service import generar_pdf
-from app.services.onedrive_service import subir_pdf_onedrive
+from app.services.onedrive_service import subir_pdf_onedrive, subir_informe_a_onedrive
 
 router = APIRouter()
 
@@ -140,6 +140,7 @@ def get_informe(
 @router.put("/{informe_id}", response_model=InformeOut)
 def actualizar_informe(
     request: Request,
+    background_tasks: BackgroundTasks,
     informe_id: str,
     body: InformeUpdate,
     current_user: dict = Depends(_medico),
@@ -175,7 +176,21 @@ def actualizar_informe(
         ip_address=get_client_ip(request),
     )
 
-    return result.data[0]
+    actualizado = result.data[0]
+
+    # Si el informe ya estaba finalizado, subir versión editada a OneDrive
+    if informe.get("estado") == "finalizado":
+        try:
+            pac_row = client.table("pacientes").select("*").eq("id", actualizado["paciente_id"]).single().execute()
+            med_row = client.table("profiles").select("nombre, apellido").eq("id", current_user["id"]).single().execute()
+            paciente = pac_row.data or {}
+            medico   = med_row.data or {}
+            pdf_bytes = generar_pdf(informe=actualizado, paciente=paciente, medico=medico)
+            background_tasks.add_task(subir_informe_a_onedrive, pdf_bytes, actualizado, paciente, True)
+        except Exception as exc:
+            logger.warning("No se pudo preparar PDF editado para OneDrive: %s", exc)
+
+    return actualizado
 
 
 @router.post("/{informe_id}/finalizar", response_model=InformeOut)
