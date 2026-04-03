@@ -13,9 +13,8 @@ export default function AppHeader({ title, subtitle, actions }: Props) {
         <div className="flex items-center justify-between gap-2">
           {/* Logo */}
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <div className="w-1 h-7 sm:h-8 bg-idm rounded-full" />
-              <span className="text-idm font-black text-xl sm:text-2xl tracking-tighter leading-none select-none">idm</span>
+            <div className="flex items-center flex-shrink-0">
+              <img src="/logo_idm.png" alt="IDM" className="h-8 sm:h-9 w-auto" />
             </div>
             <div className="w-px h-6 bg-gray-200 hidden sm:block flex-shrink-0" />
             <div className="hidden sm:block min-w-0">

@@ -59,7 +59,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm bg-white border border-gray-200 rounded-lg p-8 shadow-sm">
-        <h1 className="text-xl font-semibold text-gray-800 mb-1">IDM</h1>
+        <img src="/logo_idm.png" alt="IDM" className="h-12 mb-2" />
         <p className="text-sm text-gray-500 mb-6">Instituto de Diagnóstico Médico</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
