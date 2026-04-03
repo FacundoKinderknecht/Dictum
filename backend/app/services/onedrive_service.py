@@ -103,18 +103,21 @@ def subir_informe_a_onedrive(
         informe_id = str(informe.get("id", ""))[:8]
         fecha_est = str(informe.get("fecha_estudio", "") or "").replace("-", "")  # 20260330
 
+        nombre_base = f"{tipo}_{fecha_est}_{informe_id}"
         if editado:
             hoy = date.today().strftime("%Y%m%d")
-            filename = f"{tipo}_{fecha_est}_{informe_id}_editado_{hoy}.pdf"
+            pdf_filename = f"{nombre_base}_editado_{hoy}.pdf"
         else:
-            filename = f"{tipo}_{fecha_est}_{informe_id}.pdf"
+            pdf_filename = f"{nombre_base}.pdf"
 
-        pdf_path = f"{carpeta}/{filename}"
+        # Subcarpeta propia del informe: PDF e imágenes juntos
+        carpeta_informe = f"{carpeta}/{nombre_base}"
+        pdf_path = f"{carpeta_informe}/{pdf_filename}"
         if _upload(token, pdf_path, pdf_bytes, "application/pdf"):
             logger.info("OneDrive PDF: %s", pdf_path)
 
-        # Subir imágenes desde Supabase Storage
-        _subir_imagenes(token, str(informe.get("id", "")), carpeta)
+        # Subir imágenes dentro de la misma carpeta del informe
+        _subir_imagenes(token, str(informe.get("id", "")), carpeta_informe)
 
     except Exception as exc:
         logger.warning("OneDrive: error general (informe=%s): %s", informe.get("id"), exc)
@@ -140,7 +143,7 @@ def _subir_imagenes(token: str, informe_id: str, carpeta_base: str) -> None:
             ext = nombre.rsplit(".", 1)[-1].lower() if "." in nombre else "jpg"
             content_type = {"jpg": "image/jpeg", "jpeg": "image/jpeg",
                             "png": "image/png", "webp": "image/webp"}.get(ext, "image/jpeg")
-            onedrive_path = f"{carpeta_base}/imagenes/{nombre}"
+            onedrive_path = f"{carpeta_base}/{nombre}"
             if _upload(token, onedrive_path, img_bytes, content_type):
                 logger.info("OneDrive imagen: %s", onedrive_path)
         except Exception as exc:
