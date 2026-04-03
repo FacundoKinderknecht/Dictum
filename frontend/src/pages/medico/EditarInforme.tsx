@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { usePresence } from "../../hooks/usePresence";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pacientesApi } from "../../api/pacientes";
@@ -35,6 +36,7 @@ export default function EditarInforme() {
   });
 
   const actualizarMutation = useActualizarInforme(id ?? "");
+  const presencia = usePresence(id ?? "", user);
   const isSubmitting = actualizarMutation.isPending;
 
   if (loadingInforme || loadingPaciente) {
@@ -120,6 +122,23 @@ export default function EditarInforme() {
           </div>
         }
       />
+
+      {presencia.length > 0 && (
+        <div className="bg-blue-50 border-b border-blue-100 px-4 py-2">
+          <div className="max-w-3xl mx-auto flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-blue-500 font-medium">También viendo:</span>
+            {presencia.map((u) => (
+              <span
+                key={u.user_id}
+                className="inline-flex items-center gap-1.5 text-xs bg-white border border-blue-200 text-blue-700 rounded-full px-2.5 py-0.5"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                Dr/a. {u.apellido}, {u.nombre}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <main className="max-w-3xl mx-auto px-6 py-8 space-y-5">
         {error && (

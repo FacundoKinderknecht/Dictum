@@ -1,11 +1,9 @@
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { ApiError } from "../api/client";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
-
-const SESSION_MSG_KEY = "idm_session_msg";
 
 const ROLE_REDIRECT: Record<string, string> = {
   medico:     "/medico/dashboard",
@@ -21,14 +19,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError]       = useState<string | null>(null);
   const [loading, setLoading]   = useState(false);
-
-  useEffect(() => {
-    const msg = sessionStorage.getItem(SESSION_MSG_KEY);
-    if (msg) {
-      setError(msg);
-      sessionStorage.removeItem(SESSION_MSG_KEY);
-    }
-  }, []);
 
   // Si ya está logueado, redirigir
   if (user) {

@@ -1,17 +1,19 @@
 # Dictum — Sistema de Gestión de Informes Médicos
 
-Sistema web privado para el **Instituto de Diagnóstico Médico (IDM)** de San Salvador, Entre Ríos, Argentina. Permite a médicos crear, editar y finalizar informes de estudios por imágenes (ecografías, radiografías), y a la secretaría descargar los informes finalizados en formato PDF.
+Sistema web privado para el **Instituto de Diagnóstico Médico (IDM)** de San Salvador, Entre Ríos, Argentina. Permite a médicos crear, editar y finalizar informes de estudios por imágenes (ecografías, radiografías), adjuntar imágenes, y descargar los informes en PDF. Los informes finalizados se archivan automáticamente en OneDrive.
 
 ---
 
 ## Características
 
-- **Médico**: crear pacientes, crear y editar informes con protocolos precargados por tipo de estudio, adjuntar imágenes, finalizar informes, descargar PDF.
+- **Médico**: crear pacientes, crear y editar informes con protocolos precargados, adjuntar imágenes, finalizar informes, descargar PDF.
 - **Secretaría**: visualizar cola de impresión con filtros, descargar PDF de informes finalizados.
 - **Admin**: crear, activar y desactivar usuarios del sistema.
-- **PDF generado en memoria**: nunca se escribe a disco, se sirve directamente al navegador.
+- **PDF generado en memoria**: con logo IDM, formato institucional. Nunca se escribe a disco.
+- **Archivo en OneDrive**: al finalizar un informe, el PDF y las imágenes se suben automáticamente a OneDrive personal organizado por año/mes/paciente/tipo.
+- **Presencia en tiempo real**: al editar un informe se muestra quién más lo está viendo simultáneamente (estilo Google Docs).
+- **Múltiples sesiones**: varios dispositivos pueden estar conectados al mismo tiempo con el mismo usuario.
 - **Seguridad**: autenticación JWT (Supabase Auth), Row Level Security en base de datos, rate limiting en login, headers de seguridad HTTP, audit log de todas las acciones sensibles.
-- **Sesión con timeout**: cierre automático por inactividad (2 horas) con advertencia de 10 minutos.
 
 ---
 
@@ -23,11 +25,13 @@ Sistema web privado para el **Instituto de Diagnóstico Médico (IDM)** de San S
 | Estilos | Tailwind CSS 3 |
 | Data fetching | TanStack Query v5 |
 | Routing | React Router v6 |
+| Realtime | Supabase Realtime (presencia) |
 | Backend | FastAPI + Python 3.12 |
 | Base de datos | Supabase (PostgreSQL) con RLS |
-| Autenticación | Supabase Auth (JWT ES256) |
+| Autenticación | Supabase Auth (JWT) |
 | Storage de imágenes | Supabase Storage |
-| Generación de PDF | WeasyPrint + Jinja2 |
+| Generación de PDF | fpdf2 |
+| Archivo en nube | Microsoft OneDrive (Microsoft Graph API) |
 | Rate limiting | slowapi |
 | Deploy frontend | Vercel |
 | Deploy backend | Railway (Docker) |
@@ -38,74 +42,67 @@ Sistema web privado para el **Instituto de Diagnóstico Médico (IDM)** de San S
 
 ```
 Dictum/
-├── backend/               # API REST con FastAPI
+├── backend/
 │   ├── app/
-│   │   ├── main.py        # Entrada de la aplicación, middlewares, routers
-│   │   ├── config.py      # Variables de entorno (Pydantic Settings)
-│   │   ├── db_client.py   # Clientes de Supabase
-│   │   ├── dependencies.py # Validación de JWT y roles
-│   │   ├── routers/       # Endpoints por dominio
-│   │   ├── schemas/       # Modelos Pydantic (request/response)
-│   │   ├── services/      # Lógica de negocio
-│   │   └── templates/     # Template HTML para PDF
-│   ├── Dockerfile         # Build para Railway (incluye libs GTK para WeasyPrint)
-│   ├── requirements.txt
-│   └── .env.example
+│   │   ├── main.py           # Entrada, middlewares, routers
+│   │   ├── config.py         # Variables de entorno (Pydantic Settings)
+│   │   ├── dependencies.py   # Validación JWT y roles
+│   │   ├── routers/          # Endpoints por dominio
+│   │   ├── schemas/          # Modelos Pydantic
+│   │   ├── services/         # Lógica de negocio (pdf, onedrive, auth)
+│   │   └── static/           # Logo IDM para el PDF
+│   ├── scripts/
+│   │   └── get_onedrive_token.py  # Setup one-time de OneDrive
+│   ├── Dockerfile
+│   └── requirements.txt
 │
-├── frontend/              # SPA con React + Vite
+├── frontend/
 │   ├── src/
-│   │   ├── api/           # Llamadas HTTP al backend
-│   │   ├── components/    # Componentes reutilizables
-│   │   ├── data/          # Protocolos precargados por tipo de estudio
-│   │   ├── hooks/         # React hooks (auth, queries)
-│   │   ├── pages/         # Páginas por rol (medico/, secretaria/, admin/)
-│   │   ├── types/         # Interfaces TypeScript
-│   │   ├── App.tsx        # Raíz: contexto auth, timer de inactividad
-│   │   └── router.tsx     # Definición de rutas protegidas
-│   ├── public/
-│   └── index.html
+│   │   ├── api/              # Llamadas HTTP al backend
+│   │   ├── components/       # Componentes reutilizables (InformesLista, InformeForm…)
+│   │   ├── data/             # Protocolos precargados por tipo de estudio
+│   │   ├── hooks/            # React hooks (auth, queries, presencia)
+│   │   ├── lib/              # Cliente Supabase (realtime)
+│   │   ├── pages/            # Páginas por rol
+│   │   └── types/            # Interfaces TypeScript
+│   └── public/
+│       └── logo_idm.png
 │
-├── supabase/              # Migraciones SQL
-├── docker-compose.yml     # Desarrollo local con Docker (opcional)
-└── .gitignore
+├── supabase/                 # Migraciones SQL
+└── docker-compose.yml
 ```
 
 ---
 
 ## Configuración local
 
-### Requisitos previos
-
-- Python 3.12+
-- Node.js 18+
-- Cuenta en [Supabase](https://supabase.com)
-
 ### Backend
 
 ```bash
 cd backend
 python -m venv venv
-source venv/Scripts/activate   # Windows: venv\Scripts\activate
+source venv/Scripts/activate
 pip install -r requirements.txt
 ```
 
-Crear `backend/.env` con:
+Crear `backend/.env`:
 
 ```env
 SUPABASE_URL=https://<project-id>.supabase.co
-SUPABASE_ANON_KEY=sb_publishable_...
-SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
+SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
 ALLOWED_ORIGINS=http://localhost:5173
 ENVIRONMENT=development
-```
 
-Iniciar el servidor:
+# OneDrive (opcional en desarrollo)
+AZURE_CLIENT_ID=
+AZURE_CLIENT_SECRET=
+AZURE_REFRESH_TOKEN=
+```
 
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
-
-API disponible en `http://localhost:8000`. Documentación Swagger en `http://localhost:8000/docs` (solo en desarrollo).
 
 ### Frontend
 
@@ -114,75 +111,62 @@ cd frontend
 npm install
 ```
 
-Crear `frontend/.env` con:
+Crear `frontend/.env`:
 
 ```env
 VITE_API_URL=http://localhost:8000
+VITE_SUPABASE_URL=https://<project-id>.supabase.co
+VITE_SUPABASE_ANON_KEY=...
 ```
-
-Iniciar:
 
 ```bash
 npm run dev
 ```
 
-App disponible en `http://localhost:5173`.
-
 ---
 
-## Variables de entorno
+## Variables de entorno en producción
 
-### Backend (producción — Railway)
+### Backend (Railway)
 
 | Variable | Descripción |
 |---|---|
 | `SUPABASE_URL` | URL del proyecto Supabase |
 | `SUPABASE_ANON_KEY` | Clave pública de Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | Clave secreta (solo backend, nunca frontend) |
-| `ALLOWED_ORIGINS` | URL del frontend en Vercel |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clave secreta (solo backend) |
+| `ALLOWED_ORIGINS` | URLs del frontend separadas por coma |
 | `ENVIRONMENT` | `production` (desactiva Swagger) |
+| `AZURE_CLIENT_ID` | App registration de Azure |
+| `AZURE_CLIENT_SECRET` | Secret de la app de Azure |
+| `AZURE_REFRESH_TOKEN` | Obtenido con `scripts/get_onedrive_token.py` |
 
-### Frontend (producción — Vercel)
+### Frontend (Vercel)
 
 | Variable | Descripción |
 |---|---|
 | `VITE_API_URL` | URL del backend en Railway |
+| `VITE_SUPABASE_URL` | URL del proyecto Supabase |
+| `VITE_SUPABASE_ANON_KEY` | Clave pública de Supabase (seguro exponer) |
 
 ---
 
-## Deploy
+## Configuración de OneDrive (one-time)
 
-### Backend → Railway
+```bash
+cd backend
+python scripts/get_onedrive_token.py
+```
 
-1. Conectar repositorio en [railway.app](https://railway.app)
-2. Configurar **Root Directory** → `backend`
-3. Railway detecta el `Dockerfile` automáticamente
-4. Agregar las variables de entorno de producción
-5. El Dockerfile instala GTK/Pango/Cairo necesarios para WeasyPrint
-
-### Frontend → Vercel
-
-1. Importar repositorio en [vercel.com](https://vercel.com)
-2. Configurar **Root Directory** → `frontend`
-3. Framework: Vite (detección automática)
-4. Agregar variable `VITE_API_URL` apuntando al backend de Railway
+Sigue las instrucciones en pantalla. Al finalizar, agrega `AZURE_REFRESH_TOKEN` en Railway.
 
 ---
 
 ## Seguridad
 
-- **JWT en memoria**: el access token nunca se persiste en `localStorage`. Se guarda en React state.
-- **Refresh token en sessionStorage**: se borra automáticamente al cerrar el navegador.
-- **RLS en Supabase**: cada tabla tiene políticas que limitan el acceso según el rol del usuario autenticado.
-- **Rate limiting**: máximo 50 intentos de login por IP cada 15 minutos en producción.
-- **Headers HTTP**: `X-Frame-Options`, `Strict-Transport-Security`, `Content-Security-Policy`, `X-Content-Type-Options`.
-- **Audit log**: todas las acciones sensibles (login, crear/modificar/eliminar informes, descargar PDFs, gestión de usuarios) quedan registradas en la tabla `audit_log`.
-- **service_role_key**: usada exclusivamente en el backend para crear/eliminar usuarios. Nunca expuesta al frontend.
-
----
-
-## Notas de desarrollo
-
-- Los PDFs se generan con **WeasyPrint** que requiere librerías GTK del sistema. En Windows de desarrollo, instalar [GTK for Windows Runtime](https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer). En producción (Docker/Linux) funciona sin pasos adicionales.
-- Swagger UI solo disponible con `ENVIRONMENT=development`.
-- La secretaría solo puede ver y descargar informes en estado `finalizado`.
+- **JWT en memoria**: el access token nunca se persiste en `localStorage`.
+- **Refresh token en sessionStorage**: se borra al cerrar el navegador.
+- **RLS en Supabase**: políticas por rol en todas las tablas.
+- **Rate limiting**: 5 intentos de login por IP cada 15 minutos.
+- **Headers HTTP**: `X-Frame-Options`, `Strict-Transport-Security`, `X-Content-Type-Options`, etc.
+- **Audit log**: todas las acciones sensibles quedan registradas (ley 25.326).
+- **service_role_key**: exclusivo del backend, nunca expuesto al frontend.

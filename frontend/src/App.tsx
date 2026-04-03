@@ -9,7 +9,6 @@ import { router } from "./router";
 import type { AuthUser, LoginResponse, UserRole } from "./types";
 
 const SESSION_KEY = "idm_session";
-const SESSION_MSG_KEY = "idm_session_msg";
 
 interface StoredSession {
   user: AuthUser;
@@ -156,19 +155,6 @@ export default function App() {
     sessionStorage.removeItem(SESSION_KEY);
     setUser(null);
     queryClient.clear();
-  }, []);
-
-  // Escuchar evento de sesión desplazada (otro dispositivo inició sesión)
-  useEffect(() => {
-    function onDesplazada() {
-      clearTimeout(timerRef.current);
-      sessionStorage.setItem(SESSION_MSG_KEY, "Tu sesión fue cerrada porque iniciaste sesión en otro dispositivo.");
-      sessionStorage.removeItem(SESSION_KEY);
-      setUser(null);
-      queryClient.clear();
-    }
-    window.addEventListener("sesion-desplazada", onDesplazada);
-    return () => window.removeEventListener("sesion-desplazada", onDesplazada);
   }, []);
 
   return (

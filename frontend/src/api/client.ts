@@ -55,9 +55,6 @@ async function request<T>(
 
   if (!response.ok) {
     const detail = data.detail ?? "Error del servidor";
-    if (response.status === 401 && detail === "sesion_desplazada") {
-      window.dispatchEvent(new CustomEvent("sesion-desplazada"));
-    }
     throw new ApiError(response.status, detail);
   }
 
