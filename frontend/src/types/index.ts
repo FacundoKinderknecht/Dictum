@@ -111,6 +111,33 @@ export interface UsuarioCreate {
   rol: "medico" | "secretaria";
 }
 
+// ── Invitaciones ──────────────────────────────────────────────────────────────
+export interface AccesoMedico {
+  medico_id: string;
+  puede_editar: boolean;
+}
+
+export interface Invitacion {
+  id: string;
+  email: string;
+  rol: "medico" | "secretaria";
+  estado: "pendiente" | "activo";
+  accesos: AccesoMedico[];
+  created_at: string;
+}
+
+export interface InvitacionCreate {
+  email: string;
+  rol: "medico" | "secretaria";
+  accesos: AccesoMedico[];
+}
+
+export interface MedicoBasico {
+  id: string;
+  nombre: string;
+  apellido: string;
+}
+
 // ── Tipos de estudio y sus campos ─────────────────────────────────────────────
 export interface CampoEstudio {
   key: string;

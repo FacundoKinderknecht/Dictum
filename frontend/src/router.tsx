@@ -1,7 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
-import Registro from "./pages/Registro";
 import MedicoDashboard from "./pages/medico/Dashboard";
 import Informes from "./pages/medico/Informes";
 import MisInformes from "./pages/medico/MisInformes";
@@ -22,10 +21,6 @@ export const router = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
-  },
-  {
-    path: "/registro",
-    element: <Registro />,
   },
 
   // ── Médico ────────────────────────────────────────────────

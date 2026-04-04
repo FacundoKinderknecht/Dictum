@@ -10,6 +10,12 @@ export const authApi = {
   refresh: (refresh_token: string) =>
     api.post<LoginResponse>("/auth/refresh", { refresh_token }),
 
-  registro: (data: { email: string; password: string; nombre: string; apellido: string }) =>
-    api.post<LoginResponse>("/auth/registro", data),
+  cambiarContrasena: (password_actual: string, password_nuevo: string) =>
+    api.post<void>("/auth/cambiar-contrasena", { password_actual, password_nuevo }),
+
+  verificarEmail: (email: string) =>
+    api.post<{ estado: "pendiente" | "activo" | "no_registrado" }>("/auth/verificar-email", { email }),
+
+  activarCuenta: (data: { email: string; nombre: string; apellido: string; dni: string; password: string }) =>
+    api.post<LoginResponse>("/auth/activar-cuenta", data),
 };

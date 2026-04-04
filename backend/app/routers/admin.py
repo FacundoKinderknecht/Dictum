@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.dependencies import get_admin_client, get_client_ip, require_role
-from app.schemas.usuario import UsuarioCreate, UsuarioOut
+from app.schemas.usuario import InvitacionCreate, InvitacionOut, MedicoBasico, UsuarioCreate, UsuarioOut
 from app.services import audit_service
 
 router = APIRouter()
@@ -123,6 +123,107 @@ def activar_usuario(
 ) -> UsuarioOut:
     """Reactiva un usuario desactivado."""
     return _cambiar_estado_usuario(request, usuario_id, activo=True, current_user=current_user)
+
+
+# ── Médicos (para selector en invitaciones) ───────────────────────────────────
+
+@router.get("/medicos", response_model=list[MedicoBasico])
+def listar_medicos(
+    current_user: dict = Depends(_admin),
+) -> list[MedicoBasico]:
+    """Lista todos los médicos activos (para asignar accesos en invitaciones)."""
+    client = get_admin_client()
+    result = (
+        client.table("profiles")
+        .select("id, nombre, apellido")
+        .eq("rol", "medico")
+        .eq("activo", True)
+        .order("apellido")
+        .execute()
+    )
+    return result.data or []
+
+
+# ── Invitaciones ──────────────────────────────────────────────────────────────
+
+@router.get("/invitaciones", response_model=list[InvitacionOut])
+def listar_invitaciones(
+    current_user: dict = Depends(_admin),
+) -> list[InvitacionOut]:
+    """Lista todas las invitaciones (pendientes y activas)."""
+    client = get_admin_client()
+    result = (
+        client.table("invitaciones")
+        .select("*")
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return result.data or []
+
+
+@router.post("/invitaciones", response_model=InvitacionOut, status_code=status.HTTP_201_CREATED)
+def crear_invitacion(
+    request: Request,
+    body: InvitacionCreate,
+    current_user: dict = Depends(_admin),
+) -> InvitacionOut:
+    """Pre-registra un email con su rol y accesos a médicos."""
+    client = get_admin_client()
+    email = body.email.lower()
+
+    # Verificar que no exista ya
+    existing = client.table("invitaciones").select("id").eq("email", email).execute()
+    if existing.data:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Ya existe una invitación para ese email")
+
+    accesos = [{"medico_id": str(a.medico_id), "puede_editar": a.puede_editar} for a in body.accesos]
+
+    try:
+        result = client.table("invitaciones").insert({
+            "email": email,
+            "rol": body.rol,
+            "accesos": accesos,
+            "created_by": current_user["id"],
+        }).execute()
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al crear la invitación")
+
+    audit_service.log_audit(
+        usuario_id=current_user["id"],
+        accion="crear_invitacion",
+        tabla_afectada="invitaciones",
+        registro_id=result.data[0]["id"],
+        detalle={"email": email, "rol": body.rol},
+        ip_address=get_client_ip(request),
+    )
+
+    return result.data[0]
+
+
+@router.delete("/invitaciones/{invitacion_id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_invitacion(
+    request: Request,
+    invitacion_id: str,
+    current_user: dict = Depends(_admin),
+) -> None:
+    """Elimina una invitación pendiente."""
+    client = get_admin_client()
+
+    inv = client.table("invitaciones").select("estado").eq("id", invitacion_id).execute()
+    if not inv.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitación no encontrada")
+    if inv.data[0]["estado"] == "activo":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="No se puede eliminar una invitación ya activada")
+
+    client.table("invitaciones").delete().eq("id", invitacion_id).execute()
+
+    audit_service.log_audit(
+        usuario_id=current_user["id"],
+        accion="eliminar_invitacion",
+        tabla_afectada="invitaciones",
+        registro_id=invitacion_id,
+        ip_address=get_client_ip(request),
+    )
 
 
 def _cambiar_estado_usuario(

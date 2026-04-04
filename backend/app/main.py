@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from app.config import settings
-from app.routers import admin, auth, imagenes, informes, pacientes, pdf, registro
+from app.routers import admin, auth, imagenes, informes, pacientes, pdf
 
 logging.basicConfig(level=logging.INFO)
 
@@ -65,7 +65,6 @@ app.add_middleware(
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth.router,      prefix="/auth",      tags=["auth"])
-app.include_router(registro.router,  prefix="/auth/registro", tags=["auth"])
 app.include_router(pacientes.router, prefix="/pacientes", tags=["pacientes"])
 app.include_router(informes.router,  prefix="/informes",  tags=["informes"])
 app.include_router(imagenes.router,  prefix="/informes",  tags=["imagenes"])

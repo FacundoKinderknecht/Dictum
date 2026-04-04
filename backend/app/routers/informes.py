@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 
-from app.dependencies import get_client_ip, get_supabase_for_user, require_role
+from app.dependencies import get_admin_client, get_client_ip, get_supabase_for_user, require_role
 
 logger = logging.getLogger(__name__)
 from app.schemas.informe import InformeConPaciente, InformeCreate, InformeOut, InformeUpdate
@@ -15,6 +15,15 @@ router = APIRouter()
 
 _medico     = require_role("medico")
 _secretaria = require_role("secretaria")
+
+
+def _get_acceso(usuario_id: str, medico_id: str) -> dict | None:
+    """Retorna el registro de accesos_medico si existe, None si no."""
+    try:
+        result = get_admin_client().table("accesos_medico").select("puede_editar").eq("usuario_id", usuario_id).eq("medico_id", medico_id).execute()
+        return result.data[0] if result.data else None
+    except Exception:
+        return None
 
 
 # ── Rutas del médico ──────────────────────────────────────────────────────────
@@ -33,6 +42,7 @@ def listar_mis_informes(
             "pacientes(nombre, apellido, dni, fecha_nacimiento), "
             "profiles(nombre, apellido)"
         )
+        .eq("medico_id", current_user["id"])
         .order("created_at", desc=True)
         .execute()
     )
@@ -89,7 +99,12 @@ def listar_informes_por_medico(
     medico_id: str,
     current_user: dict = Depends(_medico),
 ) -> list[InformeConPaciente]:
-    """Retorna todos los informes de un médico específico."""
+    """Retorna todos los informes de un médico específico (propio o con acceso)."""
+    # Verificar que sea el propio médico o que tenga acceso asignado
+    if medico_id != current_user["id"]:
+        if not _get_acceso(current_user["id"], medico_id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sin acceso a los informes de este médico")
+
     client = get_supabase_for_user(current_user["token"])
 
     result = (
@@ -113,7 +128,7 @@ def get_informe(
     informe_id: str,
     current_user: dict = Depends(_medico),
 ) -> InformeConPaciente:
-    """Retorna un informe con datos del paciente. Solo propios."""
+    """Retorna un informe con datos del paciente (propio o con acceso de lectura)."""
     client = get_supabase_for_user(current_user["token"])
 
     try:
@@ -134,7 +149,15 @@ def get_informe(
     if not result.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Informe no encontrado")
 
-    return _flatten_informe(result.data)
+    informe = result.data
+    medico_id = informe.get("medico_id")
+
+    # Verificar que sea propio o tenga acceso
+    if medico_id != current_user["id"]:
+        if not _get_acceso(current_user["id"], medico_id):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Informe no encontrado")
+
+    return _flatten_informe(informe)
 
 
 @router.put("/{informe_id}", response_model=InformeOut)
@@ -145,9 +168,22 @@ def actualizar_informe(
     body: InformeUpdate,
     current_user: dict = Depends(_medico),
 ) -> InformeOut:
-    """Actualiza un informe en borrador. Los finalizados son inmutables."""
+    """Actualiza un informe en borrador (propio o con acceso de edición)."""
     client = get_supabase_for_user(current_user["token"])
-    informe = get_informe_or_404(client, informe_id, current_user["id"])
+
+    # Intentar cargar el informe; si no es propio, verificar acceso de edición
+    try:
+        informe = get_informe_or_404(client, informe_id, current_user["id"])
+    except HTTPException:
+        # Cargar el informe sin restricción de medico_id para verificar acceso
+        raw = client.table("informes").select("*").eq("id", informe_id).execute()
+        if not raw.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Informe no encontrado")
+        informe = raw.data[0]
+        acceso = _get_acceso(current_user["id"], informe["medico_id"])
+        if not acceso or not acceso.get("puede_editar"):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sin permiso para editar este informe")
+
 
     changes = body.model_dump(exclude_none=True, mode="json")
     if not changes:
