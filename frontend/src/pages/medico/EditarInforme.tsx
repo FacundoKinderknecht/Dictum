@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
-import { usePresence } from "../../hooks/usePresence";
 import { useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
+import { usePresence } from "../../hooks/usePresence";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pacientesApi } from "../../api/pacientes";
 import { informesApi } from "../../api/informes";
@@ -16,6 +17,7 @@ import { ApiError } from "../../api/client";
 export default function EditarInforme() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
