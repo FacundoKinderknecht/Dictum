@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { getSupabase } from "../lib/supabase";
 
 export interface PresenceUser {
   user_id: string;
@@ -14,7 +14,8 @@ export function usePresence(
   const [others, setOthers] = useState<PresenceUser[]>([]);
 
   useEffect(() => {
-    if (!informeId || !currentUser || !import.meta.env.VITE_SUPABASE_URL) return;
+    const supabase = getSupabase();
+    if (!informeId || !currentUser || !supabase) return;
 
     const channel = supabase.channel(`informe:${informeId}`, {
       config: { presence: { key: currentUser.id } },
