@@ -11,14 +11,14 @@ export default function ColaImpresion() {
   const { data: informes, isLoading, error } = useInformesFinalizados();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  async function handleDescargar(informeId: string) {
-    setDownloadingId(informeId);
+  async function handleDescargar(informeId: string, membrete: boolean) {
+    setDownloadingId(informeId + (membrete ? "_m" : "_i"));
     try {
-      const blob = await informesApi.descargarPdf(informeId);
+      const blob = await informesApi.descargarPdf(informeId, membrete);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `informe_${informeId.slice(0, 8)}.pdf`;
+      a.download = `informe_${informeId.slice(0, 8)}${membrete ? "" : "_imprimir"}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -78,14 +78,24 @@ export default function ColaImpresion() {
                       Dr/a. {inf.medico_apellido}, {inf.medico_nombre}
                     </td>
                     <td className="px-4 py-3">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        loading={downloadingId === inf.id}
-                        onClick={() => handleDescargar(inf.id)}
-                      >
-                        Descargar PDF
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          loading={downloadingId === inf.id + "_i"}
+                          onClick={() => handleDescargar(inf.id, false)}
+                        >
+                          Imprimir
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          loading={downloadingId === inf.id + "_m"}
+                          onClick={() => handleDescargar(inf.id, true)}
+                        >
+                          Con membrete
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

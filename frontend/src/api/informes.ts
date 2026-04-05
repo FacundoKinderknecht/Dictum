@@ -26,5 +26,6 @@ export const informesApi = {
   listarFinalizados: () => api.get<InformeConPaciente[]>("/informes/finalizados/lista"),
 
   // Compartido (médico + secretaria)
-  descargarPdf: (id: string) => api.getBlob(`/informes/${id}/pdf`),
+  descargarPdf: (id: string, membrete = true) =>
+    api.getBlob(`/informes/${id}/pdf?membrete=${membrete}`),
 };

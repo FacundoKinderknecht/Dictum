@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.dependencies import get_admin_client, get_client_ip, get_current_user, get_supabase_for_user
 from app.schemas.usuario import (
+    ActualizarPerfilRequest,
     ActivarCuentaRequest,
     CambiarContrasenaRequest,
     LoginRequest,
@@ -204,6 +205,20 @@ def logout(
         tabla_afectada="auth",
         ip_address=get_client_ip(request),
     )
+
+
+@router.patch("/perfil", status_code=status.HTTP_204_NO_CONTENT)
+def actualizar_perfil(
+    body: ActualizarPerfilRequest,
+    current_user: dict = Depends(get_current_user),
+) -> None:
+    """Permite al usuario actualizar su matrícula profesional."""
+    admin_client = get_admin_client()
+    try:
+        admin_client.table("profiles").update({"matricula": body.matricula or None}).eq("id", current_user["id"]).execute()
+    except Exception as exc:
+        logger.error("Error al actualizar perfil del usuario %s: %s", current_user["id"], exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al actualizar el perfil")
 
 
 @router.post("/cambiar-contrasena", status_code=status.HTTP_204_NO_CONTENT)

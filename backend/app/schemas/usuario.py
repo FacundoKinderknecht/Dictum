@@ -90,3 +90,7 @@ class ActivarCuentaRequest(BaseModel):
     apellido: str = Field(..., min_length=1, max_length=100)
     dni: str = Field(..., min_length=1, max_length=20)
     password: str = Field(..., min_length=8, max_length=72)
+
+
+class ActualizarPerfilRequest(BaseModel):
+    matricula: str = Field(..., max_length=50)

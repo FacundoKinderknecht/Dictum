@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useInformesDelMedico } from "../../hooks/useInformes";
 import { authApi } from "../../api/auth";
-import { ApiError } from "../../api/client";
+import { api, ApiError } from "../../api/client";
 import AppHeader from "../../components/ui/AppHeader";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
@@ -24,6 +24,28 @@ export default function PerfilMedico() {
       : esPropioMedico && user
       ? `Dr/a. ${user.apellido}, ${user.nombre}`
       : "Médico";
+
+  // ── Matrícula ─────────────────────────────────────────────────────────────
+  const [matricula, setMatricula]         = useState("");
+  const [matriculaOk, setMatriculaOk]     = useState(false);
+  const [matriculaError, setMatriculaError] = useState<string | null>(null);
+  const [matriculaLoading, setMatriculaLoading] = useState(false);
+
+  async function handleGuardarMatricula(e: FormEvent) {
+    e.preventDefault();
+    setMatriculaError(null);
+    setMatriculaOk(false);
+    setMatriculaLoading(true);
+    try {
+      await api.patch<void>("/auth/perfil", { matricula });
+      setMatriculaOk(true);
+      setTimeout(() => setMatriculaOk(false), 3000);
+    } catch {
+      setMatriculaError("Error al guardar. Intentá de nuevo.");
+    } finally {
+      setMatriculaLoading(false);
+    }
+  }
 
   // ── Cambio de contraseña ──────────────────────────────────────────────────
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -82,6 +104,23 @@ export default function PerfilMedico() {
       />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+        {esPropioMedico && (
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <p className="text-sm font-medium text-gray-800 mb-3">Matrícula profesional</p>
+            <form onSubmit={handleGuardarMatricula} className="flex items-end gap-3 max-w-xs">
+              <Input
+                label=""
+                placeholder="Ej: MP7451"
+                value={matricula}
+                onChange={(e) => { setMatricula(e.target.value); setMatriculaError(null); setMatriculaOk(false); }}
+              />
+              <Button type="submit" size="sm" loading={matriculaLoading}>Guardar</Button>
+            </form>
+            {matriculaError && <p className="mt-2 text-sm text-red-600">{matriculaError}</p>}
+            {matriculaOk    && <p className="mt-2 text-sm text-green-700">Matrícula actualizada.</p>}
+          </div>
+        )}
+
         {esPropioMedico && (
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <div className="flex items-center justify-between">

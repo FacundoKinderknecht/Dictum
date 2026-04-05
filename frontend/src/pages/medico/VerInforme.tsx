@@ -12,25 +12,25 @@ export default function VerInforme() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: informe, isLoading } = useInforme(id ?? "");
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState<"membrete" | "imprimir" | null>(null);
 
   const esPropio = informe?.medico_id === user?.id;
 
-  async function handleDescargarPDF() {
+  async function handleDescargarPDF(membrete: boolean) {
     if (!id) return;
-    setDownloadingPdf(true);
+    setDownloadingPdf(membrete ? "membrete" : "imprimir");
     try {
-      const blob = await informesApi.descargarPdf(id);
+      const blob = await informesApi.descargarPdf(id, membrete);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `informe_${id.slice(0, 8)}.pdf`;
+      a.download = `informe_${id.slice(0, 8)}${membrete ? "" : "_imprimir"}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
       alert("Error al descargar el PDF");
     } finally {
-      setDownloadingPdf(false);
+      setDownloadingPdf(null);
     }
   }
 
@@ -63,9 +63,14 @@ export default function VerInforme() {
               </Button>
             )}
             {informe.estado === "finalizado" && (
-              <Button size="sm" variant="secondary" loading={downloadingPdf} onClick={handleDescargarPDF}>
-                Descargar PDF
-              </Button>
+              <>
+                <Button size="sm" variant="secondary" loading={downloadingPdf === "membrete"} onClick={() => handleDescargarPDF(true)}>
+                  PDF con membrete
+                </Button>
+                <Button size="sm" variant="secondary" loading={downloadingPdf === "imprimir"} onClick={() => handleDescargarPDF(false)}>
+                  PDF para imprimir
+                </Button>
+              </>
             )}
             <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>← Volver</Button>
           </>

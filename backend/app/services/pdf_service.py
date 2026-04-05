@@ -57,7 +57,7 @@ class _InformePDF(FPDF):
         self.set_text_color(0, 0, 0)
 
 
-def generar_pdf(informe: dict, paciente: dict, medico: dict) -> bytes:
+def generar_pdf(informe: dict, paciente: dict, medico: dict, con_membrete: bool = True) -> bytes:
     fecha_nac_raw = paciente.get("fecha_nacimiento")
     fecha_nac: date | None = None
     if isinstance(fecha_nac_raw, str) and fecha_nac_raw:
@@ -76,58 +76,56 @@ def generar_pdf(informe: dict, paciente: dict, medico: dict) -> bytes:
     pdf.set_auto_page_break(auto=True, margin=18)
     pdf.add_page()
 
-    # ── HEADER ───────────────────────────────────────────────────────────────────
-    W = pdf.w - pdf.l_margin - pdf.r_margin   # ancho útil
-    LOGO_W = 28                                 # ancho del logo en mm
-    TEXT_X = pdf.l_margin + LOGO_W + 4         # inicio del bloque de texto
+    W = pdf.w - pdf.l_margin - pdf.r_margin
 
-    logo_exists = os.path.isfile(LOGO_PATH)
+    # ── HEADER (solo con membrete) ────────────────────────────────────────────────
+    if con_membrete:
+        LOGO_W = 28
+        TEXT_X = pdf.l_margin + LOGO_W + 4
 
-    if logo_exists:
-        pdf.image(LOGO_PATH, x=pdf.l_margin, y=pdf.get_y(), w=LOGO_W)
-    else:
-        # Fallback: texto "idm" en rojo si no hay logo
-        pdf.set_font("Helvetica", "B", 26)
+        logo_exists = os.path.isfile(LOGO_PATH)
+
+        if logo_exists:
+            pdf.image(LOGO_PATH, x=pdf.l_margin, y=pdf.get_y(), w=LOGO_W)
+        else:
+            pdf.set_font("Helvetica", "B", 26)
+            pdf.set_text_color(220, 38, 38)
+            pdf.set_xy(pdf.l_margin, pdf.get_y())
+            pdf.cell(LOGO_W, 14, "idm", align="C")
+            pdf.set_text_color(0, 0, 0)
+
+        y_header = pdf.get_y()
+        pdf.set_xy(TEXT_X, y_header)
+        pdf.set_font("Helvetica", "B", 13)
         pdf.set_text_color(220, 38, 38)
-        pdf.set_xy(pdf.l_margin, pdf.get_y())
-        pdf.cell(LOGO_W, 14, "idm", align="C")
+        pdf.cell(W - LOGO_W - 4, 6, "Instituto de Diagnostico Medico", new_x="LMARGIN", new_y="NEXT")
+
+        pdf.set_xy(TEXT_X, pdf.get_y())
+        pdf.set_font("Helvetica", "", 6.5)
+        pdf.set_text_color(80, 80, 80)
+        pdf.cell(W - LOGO_W - 4, 4,
+                 "ECOGRAFIA  -  MAMOGRAFIA DIGITAL  -  RADIOLOGIA DIGITAL DIRECTA",
+                 new_x="LMARGIN", new_y="NEXT")
+
+        pdf.set_xy(TEXT_X, pdf.get_y())
+        pdf.cell(W - LOGO_W - 4, 4,
+                 "ECO DOPPLER COLOR  -  ECOGRAFIA 5D  -  ESPINOGRAFIA",
+                 new_x="LMARGIN", new_y="NEXT")
+
         pdf.set_text_color(0, 0, 0)
 
-    # Nombre del instituto y servicios a la derecha del logo
-    y_header = pdf.get_y()
-    pdf.set_xy(TEXT_X, y_header)
-    pdf.set_font("Helvetica", "B", 13)
-    pdf.set_text_color(220, 38, 38)
-    pdf.cell(W - LOGO_W - 4, 6, "Instituto de Diagnostico Medico", new_x="LMARGIN", new_y="NEXT")
+        logo_bottom = y_header + (LOGO_W * 0.6 if logo_exists else 14)
+        if pdf.get_y() < logo_bottom:
+            pdf.set_y(logo_bottom)
 
-    pdf.set_xy(TEXT_X, pdf.get_y())
-    pdf.set_font("Helvetica", "", 6.5)
-    pdf.set_text_color(80, 80, 80)
-    pdf.cell(W - LOGO_W - 4, 4,
-             "ECOGRAFIA  -  MAMOGRAFIA DIGITAL  -  RADIOLOGIA DIGITAL DIRECTA",
-             new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
 
-    pdf.set_xy(TEXT_X, pdf.get_y())
-    pdf.cell(W - LOGO_W - 4, 4,
-             "ECO DOPPLER COLOR  -  ECOGRAFIA 5D  -  ESPINOGRAFIA",
-             new_x="LMARGIN", new_y="NEXT")
-
-    pdf.set_text_color(0, 0, 0)
-
-    # Garantizar que el cursor baje al menos hasta el alto del logo
-    logo_bottom = y_header + (LOGO_W * 0.6 if logo_exists else 14)
-    if pdf.get_y() < logo_bottom:
-        pdf.set_y(logo_bottom)
-
-    pdf.ln(3)
-
-    # Línea roja separadora
-    pdf.set_draw_color(220, 38, 38)
-    pdf.set_line_width(0.7)
-    pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
-    pdf.set_line_width(0.2)
-    pdf.set_draw_color(0, 0, 0)
-    pdf.ln(4)
+        pdf.set_draw_color(220, 38, 38)
+        pdf.set_line_width(0.7)
+        pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
+        pdf.set_line_width(0.2)
+        pdf.set_draw_color(0, 0, 0)
+        pdf.ln(4)
 
     # ── DATOS DEL PACIENTE ───────────────────────────────────────────────────────
     COL = W / 2
@@ -177,13 +175,21 @@ def generar_pdf(informe: dict, paciente: dict, medico: dict) -> bytes:
 
     pdf.ln(8)
 
-    # Firma del médico
-    medico_nombre = f"Dr/a. {medico.get('apellido', '')}, {medico.get('nombre', '')}"
-    pdf.set_font("Helvetica", "", 9)
-    pdf.cell(0, 5, _latin1_safe(medico_nombre), align="R", new_x="LMARGIN", new_y="NEXT")
+    # Firma del médico (vacía si no hay datos — ej. secretaria)
+    line_w = 60
+    if medico.get("nombre") or medico.get("apellido"):
+        medico_nombre = f"Dr/a. {medico.get('apellido', '')}, {medico.get('nombre', '')}"
+        matricula = medico.get("matricula") or ""
+        pdf.set_font("Helvetica", "", 9)
+        pdf.cell(0, 5, _latin1_safe(medico_nombre), align="R", new_x="LMARGIN", new_y="NEXT")
+        if matricula:
+            pdf.set_font("Helvetica", "", 8)
+            pdf.set_text_color(80, 80, 80)
+            pdf.cell(0, 4, _latin1_safe(matricula), align="R", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(0, 0, 0)
+
     pdf.set_draw_color(80, 80, 80)
     pdf.set_line_width(0.3)
-    line_w = 55
     pdf.line(pdf.w - pdf.r_margin - line_w, pdf.get_y(),
              pdf.w - pdf.r_margin, pdf.get_y())
     pdf.set_line_width(0.2)

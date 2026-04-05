@@ -218,7 +218,7 @@ def actualizar_informe(
     if informe.get("estado") == "finalizado":
         try:
             pac_row = client.table("pacientes").select("*").eq("id", actualizado["paciente_id"]).single().execute()
-            med_row = client.table("profiles").select("nombre, apellido").eq("id", current_user["id"]).single().execute()
+            med_row = client.table("profiles").select("nombre, apellido, matricula").eq("id", current_user["id"]).single().execute()
             paciente = pac_row.data or {}
             medico   = med_row.data or {}
             pdf_bytes = generar_pdf(informe=actualizado, paciente=paciente, medico=medico)
@@ -267,7 +267,7 @@ def finalizar_informe(
     # Subir PDF a OneDrive en background (no bloquea la respuesta)
     try:
         pac_row = client.table("pacientes").select("*").eq("id", finalizado["paciente_id"]).single().execute()
-        med_row = client.table("profiles").select("nombre, apellido").eq("id", current_user["id"]).single().execute()
+        med_row = client.table("profiles").select("nombre, apellido, matricula").eq("id", current_user["id"]).single().execute()
         paciente = pac_row.data or {}
         medico   = med_row.data or {}
         pdf_bytes = generar_pdf(informe=finalizado, paciente=paciente, medico=medico)
