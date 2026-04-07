@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.dependencies import get_admin_client, get_client_ip, require_role
-from app.schemas.usuario import InvitacionCreate, InvitacionOut, MedicoBasico, UsuarioCreate, UsuarioOut
+from app.schemas.usuario import AccesoMedicoOut, ActualizarAccesosRequest, InvitacionCreate, InvitacionOut, MedicoBasico, UsuarioCreate, UsuarioOut
 from app.services import audit_service
 
 router = APIRouter()
@@ -222,6 +222,51 @@ def eliminar_invitacion(
         accion="eliminar_invitacion",
         tabla_afectada="invitaciones",
         registro_id=invitacion_id,
+        ip_address=get_client_ip(request),
+    )
+
+
+# ── Accesos por médico (editar permisos de usuario existente) ─────────────────
+
+@router.get("/usuarios/{usuario_id}/accesos", response_model=list[AccesoMedicoOut])
+def obtener_accesos(
+    usuario_id: str,
+    current_user: dict = Depends(_admin),
+) -> list[AccesoMedicoOut]:
+    """Retorna los accesos a médicos asignados a un usuario."""
+    client = get_admin_client()
+    result = client.table("accesos_medico").select("medico_id, puede_editar").eq("usuario_id", usuario_id).execute()
+    return result.data or []
+
+
+@router.put("/usuarios/{usuario_id}/accesos", status_code=status.HTTP_204_NO_CONTENT)
+def actualizar_accesos(
+    request: Request,
+    usuario_id: str,
+    body: ActualizarAccesosRequest,
+    current_user: dict = Depends(_admin),
+) -> None:
+    """Reemplaza completamente los accesos a médicos de un usuario."""
+    client = get_admin_client()
+
+    # Verificar que el usuario existe
+    perfil = client.table("profiles").select("id, rol").eq("id", usuario_id).execute()
+    if not perfil.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    # Borrar accesos actuales y reemplazar
+    client.table("accesos_medico").delete().eq("usuario_id", usuario_id).execute()
+
+    if body.accesos:
+        rows = [{"usuario_id": usuario_id, "medico_id": str(a.medico_id), "puede_editar": a.puede_editar} for a in body.accesos]
+        client.table("accesos_medico").insert(rows).execute()
+
+    audit_service.log_audit(
+        usuario_id=current_user["id"],
+        accion="actualizar_accesos",
+        tabla_afectada="accesos_medico",
+        registro_id=usuario_id,
+        detalle={"cantidad_accesos": len(body.accesos)},
         ip_address=get_client_ip(request),
     )
 

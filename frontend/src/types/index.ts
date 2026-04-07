@@ -138,6 +138,11 @@ export interface MedicoBasico {
   apellido: string;
 }
 
+export interface AccesoMedicoOut {
+  medico_id: string;
+  puede_editar: boolean;
+}
+
 // ── Tipos de estudio y sus campos ─────────────────────────────────────────────
 export interface CampoEstudio {
   key: string;

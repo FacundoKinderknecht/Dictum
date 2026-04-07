@@ -94,3 +94,12 @@ class ActivarCuentaRequest(BaseModel):
 
 class ActualizarPerfilRequest(BaseModel):
     matricula: str = Field(..., max_length=50)
+
+
+class AccesoMedicoOut(BaseModel):
+    medico_id: UUID
+    puede_editar: bool
+
+
+class ActualizarAccesosRequest(BaseModel):
+    accesos: list[AccesoMedicoIn] = []

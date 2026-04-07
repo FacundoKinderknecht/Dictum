@@ -311,7 +311,21 @@ def eliminar_informe(
 def listar_finalizados(
     current_user: dict = Depends(_secretaria),
 ) -> list[InformeConPaciente]:
-    """Retorna todos los informes finalizados para la cola de impresión."""
+    """Retorna informes finalizados filtrados por los médicos a los que tiene acceso."""
+    admin_client = get_admin_client()
+
+    # Solo los médicos para los que tiene acceso asignado
+    accesos_result = (
+        admin_client.table("accesos_medico")
+        .select("medico_id")
+        .eq("usuario_id", current_user["id"])
+        .execute()
+    )
+    medico_ids = [a["medico_id"] for a in (accesos_result.data or [])]
+
+    if not medico_ids:
+        return []
+
     client = get_supabase_for_user(current_user["token"])
 
     result = (
@@ -322,6 +336,7 @@ def listar_finalizados(
             "profiles(nombre, apellido)"
         )
         .eq("estado", "finalizado")
+        .in_("medico_id", medico_ids)
         .order("updated_at", desc=True)
         .execute()
     )

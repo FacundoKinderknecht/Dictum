@@ -6,13 +6,16 @@ import AppHeader from "../../components/ui/AppHeader";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
-import type { Invitacion, InvitacionCreate, MedicoBasico, Usuario, UsuarioCreate } from "../../types";
+import type { AccesoMedicoOut, Invitacion, InvitacionCreate, MedicoBasico, Usuario, UsuarioCreate } from "../../types";
 
 const usuariosApi = {
-  listar:        ()                    => api.get<Usuario[]>("/admin/usuarios"),
-  crear:         (data: UsuarioCreate) => api.post<Usuario>("/admin/usuarios", data),
-  desactivar:    (id: string)          => api.patch<Usuario>(`/admin/usuarios/${id}/desactivar`),
-  activar:       (id: string)          => api.patch<Usuario>(`/admin/usuarios/${id}/activar`),
+  listar:          ()                    => api.get<Usuario[]>("/admin/usuarios"),
+  crear:           (data: UsuarioCreate) => api.post<Usuario>("/admin/usuarios", data),
+  desactivar:      (id: string)          => api.patch<Usuario>(`/admin/usuarios/${id}/desactivar`),
+  activar:         (id: string)          => api.patch<Usuario>(`/admin/usuarios/${id}/activar`),
+  getAccesos:      (id: string)          => api.get<AccesoMedicoOut[]>(`/admin/usuarios/${id}/accesos`),
+  putAccesos:      (id: string, accesos: { medico_id: string; puede_editar: boolean }[]) =>
+                     api.put<void>(`/admin/usuarios/${id}/accesos`, { accesos }),
 };
 
 const invitacionesApi = {
@@ -67,6 +70,52 @@ export default function Usuarios() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "usuarios"] }),
   });
 
+  // ── Estado edición de permisos ────────────────────────────────────────────
+  const [editandoUsuario, setEditandoUsuario] = useState<Usuario | null>(null);
+  const [editAccesos, setEditAccesos]         = useState<Record<string, boolean>>({});
+  const [savingAccesos, setSavingAccesos]     = useState(false);
+  const [accesosError, setAccesosError]       = useState<string | null>(null);
+
+
+  async function abrirEditarPermisos(u: Usuario) {
+    setEditandoUsuario(u);
+    setAccesosError(null);
+    try {
+      const accesos = await usuariosApi.getAccesos(u.id);
+      const mapa: Record<string, boolean> = {};
+      for (const a of accesos) mapa[a.medico_id] = a.puede_editar;
+      setEditAccesos(mapa);
+    } catch {
+      setEditAccesos({});
+    }
+  }
+
+  function toggleEditAcceso(medicoId: string) {
+    setEditAccesos(prev => {
+      if (medicoId in prev) { const next = { ...prev }; delete next[medicoId]; return next; }
+      return { ...prev, [medicoId]: false };
+    });
+  }
+
+  function toggleEditEditar(medicoId: string) {
+    setEditAccesos(prev => ({ ...prev, [medicoId]: !prev[medicoId] }));
+  }
+
+  async function guardarAccesos() {
+    if (!editandoUsuario) return;
+    setSavingAccesos(true);
+    setAccesosError(null);
+    try {
+      const accesos = Object.entries(editAccesos).map(([medico_id, puede_editar]) => ({ medico_id, puede_editar }));
+      await usuariosApi.putAccesos(editandoUsuario.id, accesos);
+      setEditandoUsuario(null);
+    } catch {
+      setAccesosError("Error al guardar. Intentá de nuevo.");
+    } finally {
+      setSavingAccesos(false);
+    }
+  }
+
   // ── Estado invitaciones ───────────────────────────────────────────────────
   const [mostrarFormInv, setMostrarFormInv] = useState(false);
   const [invEmail, setInvEmail]             = useState("");
@@ -84,7 +133,7 @@ export default function Usuarios() {
   const { data: medicos } = useQuery({
     queryKey: ["admin", "medicos"],
     queryFn: medicosApi.listar,
-    enabled: mostrarFormInv,
+    enabled: mostrarFormInv || !!editandoUsuario,
   });
 
   const crearInvMutation = useMutation({
@@ -159,6 +208,51 @@ export default function Usuarios() {
           </button>
         </div>
 
+        {/* ── Modal editar permisos ── */}
+        {editandoUsuario && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
+              <h2 className="font-semibold text-gray-800">
+                Permisos — {editandoUsuario.apellido}, {editandoUsuario.nombre}
+              </h2>
+              <p className="text-xs text-gray-500">Seleccioná los médicos cuyos informes puede ver. Marcá "Puede editar" para permitir edición.</p>
+
+              {!medicos && <p className="text-sm text-gray-400">Cargando médicos...</p>}
+              {medicos && medicos.length === 0 && <p className="text-sm text-gray-400">No hay médicos activos.</p>}
+              {medicos && medicos.length > 0 && (
+                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-64 overflow-y-auto">
+                  {medicos.map((m) => {
+                    const tieneAcceso = m.id in editAccesos;
+                    const puedeEditar = editAccesos[m.id] ?? false;
+                    return (
+                      <div key={m.id} className="flex items-center justify-between px-4 py-2.5">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input type="checkbox" checked={tieneAcceso} onChange={() => toggleEditAcceso(m.id)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-400" />
+                          <span className="text-sm text-gray-800">{m.apellido}, {m.nombre}</span>
+                        </label>
+                        {tieneAcceso && (
+                          <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-gray-500">
+                            <input type="checkbox" checked={puedeEditar} onChange={() => toggleEditEditar(m.id)}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-400" />
+                            Puede editar
+                          </label>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {accesosError && <p className="text-sm text-red-600">{accesosError}</p>}
+              <div className="flex gap-3 pt-1">
+                <Button onClick={guardarAccesos} loading={savingAccesos}>Guardar</Button>
+                <Button variant="ghost" onClick={() => setEditandoUsuario(null)}>Cancelar</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Tab: Usuarios ── */}
         {tab === "usuarios" && (
           <>
@@ -223,11 +317,16 @@ export default function Usuarios() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          {u.activo ? (
-                            <Button variant="ghost" size="sm" onClick={() => desactivarMutation.mutate(u.id)} loading={desactivarMutation.isPending}>Desactivar</Button>
-                          ) : (
-                            <Button variant="ghost" size="sm" onClick={() => activarMutation.mutate(u.id)} loading={activarMutation.isPending}>Activar</Button>
-                          )}
+                          <div className="flex gap-2">
+                            {u.rol !== "admin" && (
+                              <Button variant="ghost" size="sm" onClick={() => abrirEditarPermisos(u)}>Permisos</Button>
+                            )}
+                            {u.activo ? (
+                              <Button variant="ghost" size="sm" onClick={() => desactivarMutation.mutate(u.id)} loading={desactivarMutation.isPending}>Desactivar</Button>
+                            ) : (
+                              <Button variant="ghost" size="sm" onClick={() => activarMutation.mutate(u.id)} loading={activarMutation.isPending}>Activar</Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
