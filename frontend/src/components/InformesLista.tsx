@@ -56,7 +56,7 @@ export default function InformesLista({
 }: InformesListaProps) {
   const navigate = useNavigate();
   const [busqueda, setBusqueda] = useState("");
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null); // id + "_m" | id + "_i"
   const eliminarMutation = useEliminarInforme();
 
   const base = useMemo(
@@ -76,14 +76,15 @@ export default function InformesLista({
     });
   }, [base, busqueda]);
 
-  async function handleDescargarPDF(inf: InformeConPaciente) {
-    setDownloadingId(inf.id);
+  async function handleDescargarPDF(inf: InformeConPaciente, membrete: boolean) {
+    const key = inf.id + (membrete ? "_m" : "_i");
+    setDownloadingId(key);
     try {
-      const blob = await informesApi.descargarPdf(inf.id);
+      const blob = await informesApi.descargarPdf(inf.id, membrete);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `informe_${inf.id.slice(0, 8)}.pdf`;
+      a.download = `informe_${inf.id.slice(0, 8)}${membrete ? "" : "_imprimir"}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -178,9 +179,10 @@ export default function InformesLista({
                     </Button>
                   )}
                   {inf.estado === "finalizado" && (
-                    <Button variant="ghost" size="sm" loading={downloadingId === inf.id} onClick={() => handleDescargarPDF(inf)}>
-                      PDF
-                    </Button>
+                    <>
+                      <Button variant="ghost" size="sm" loading={downloadingId === inf.id + "_m"} onClick={() => handleDescargarPDF(inf, true)}>PDF</Button>
+                      <Button variant="ghost" size="sm" loading={downloadingId === inf.id + "_i"} onClick={() => handleDescargarPDF(inf, false)}>Imprimir</Button>
+                    </>
                   )}
                   {esPropio(inf) && inf.estado === "borrador" && (
                     <Button variant="ghost" size="sm" disabled={eliminarMutation.isPending} onClick={() => handleEliminar(inf)} className="text-red-600 hover:bg-red-50">
@@ -243,7 +245,10 @@ export default function InformesLista({
                         <Button variant="ghost" size="sm" onClick={() => navigate(`/medico/editar-informe/${inf.id}`)}>Editar</Button>
                       )}
                       {inf.estado === "finalizado" && (
-                        <Button variant="ghost" size="sm" loading={downloadingId === inf.id} onClick={() => handleDescargarPDF(inf)}>PDF</Button>
+                        <>
+                          <Button variant="ghost" size="sm" loading={downloadingId === inf.id + "_m"} onClick={() => handleDescargarPDF(inf, true)}>PDF</Button>
+                          <Button variant="ghost" size="sm" loading={downloadingId === inf.id + "_i"} onClick={() => handleDescargarPDF(inf, false)}>Imprimir</Button>
+                        </>
                       )}
                       {esPropio(inf) && inf.estado === "borrador" && (
                         <Button variant="ghost" size="sm" disabled={eliminarMutation.isPending} onClick={() => handleEliminar(inf)} className="text-red-600 hover:bg-red-50">

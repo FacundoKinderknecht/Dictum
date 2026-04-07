@@ -15,6 +15,21 @@ MAX_SIZE_MB = 10
 _medico = require_role("medico")
 
 
+def _verificar_acceso_informe(client, informe_id: str, usuario_id: str, solo_propietario: bool = False) -> None:
+    """Verifica que el usuario tiene acceso al informe (propio o con permiso). Lanza 404 si no."""
+    informe = client.table("informes").select("medico_id").eq("id", informe_id).execute()
+    if not informe.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Informe no encontrado")
+    medico_id = informe.data[0]["medico_id"]
+    if medico_id == usuario_id:
+        return
+    if solo_propietario:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sin acceso a este informe")
+    acceso = get_admin_client().table("accesos_medico").select("usuario_id").eq("usuario_id", usuario_id).eq("medico_id", medico_id).execute()
+    if not acceso.data:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sin acceso a este informe")
+
+
 @router.post("/{informe_id}/imagenes")
 def subir_imagen(
     informe_id: str,
@@ -35,11 +50,9 @@ def subir_imagen(
             detail=f"El archivo supera el límite de {MAX_SIZE_MB} MB",
         )
 
-    # Verificar que el informe pertenece al médico
     client = get_supabase_for_user(current_user["token"])
-    informe = client.table("informes").select("id").eq("id", informe_id).eq("medico_id", current_user["id"]).execute()
-    if not informe.data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Informe no encontrado")
+    # Solo el propietario puede subir imágenes
+    _verificar_acceso_informe(client, informe_id, current_user["id"], solo_propietario=True)
 
     ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "jpg"
     filename = f"{uuid.uuid4().hex}.{ext}"
@@ -75,9 +88,7 @@ def listar_imagenes(
 ):
     """Lista las imágenes de un informe con URLs firmadas."""
     client = get_supabase_for_user(current_user["token"])
-    informe = client.table("informes").select("id").eq("id", informe_id).eq("medico_id", current_user["id"]).execute()
-    if not informe.data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Informe no encontrado")
+    _verificar_acceso_informe(client, informe_id, current_user["id"])
 
     admin_client = get_admin_client()
     try:
@@ -109,9 +120,8 @@ def eliminar_imagen(
 ):
     """Elimina una imagen del bucket."""
     client = get_supabase_for_user(current_user["token"])
-    informe = client.table("informes").select("id").eq("id", informe_id).eq("medico_id", current_user["id"]).execute()
-    if not informe.data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Informe no encontrado")
+    # Solo el propietario puede eliminar imágenes
+    _verificar_acceso_informe(client, informe_id, current_user["id"], solo_propietario=True)
 
     path = f"{informe_id}/{filename}"
     admin_client = get_admin_client()

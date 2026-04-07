@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.dependencies import get_client_ip, get_supabase_for_user, require_role
+from app.dependencies import get_admin_client, get_client_ip, get_supabase_for_user, require_role
 from app.schemas.paciente import PacienteCreate, PacienteOut, PacienteUpdate
 from app.services import audit_service
 
@@ -24,8 +24,9 @@ def buscar_pacientes(
     query = client.table("pacientes").select("*").order("apellido")
 
     if q:
-        # Búsqueda case-insensitive en apellido, nombre o dni
-        query = query.or_(f"apellido.ilike.%{q}%,nombre.ilike.%{q}%,dni.ilike.%{q}%")
+        # Sanitizar caracteres especiales de LIKE antes de interpolar
+        q_safe = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        query = query.or_(f"apellido.ilike.%{q_safe}%,nombre.ilike.%{q_safe}%,dni.ilike.%{q_safe}%")
 
     result = query.execute()
     return result.data or []
@@ -71,6 +72,11 @@ def listar_informes_del_paciente(
     if not pac.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente no encontrado")
 
+    # Determinar médicos a los que tiene acceso (propio + concedidos)
+    accesos = get_admin_client().table("accesos_medico").select("medico_id").eq("usuario_id", current_user["id"]).execute()
+    medico_ids_acceso = [a["medico_id"] for a in (accesos.data or [])]
+    medico_ids_visibles = list({current_user["id"], *medico_ids_acceso})
+
     result = (
         client.table("informes")
         .select(
@@ -79,6 +85,7 @@ def listar_informes_del_paciente(
             "profiles(nombre, apellido)"
         )
         .eq("paciente_id", paciente_id)
+        .in_("medico_id", medico_ids_visibles)
         .order("created_at", desc=True)
         .execute()
     )

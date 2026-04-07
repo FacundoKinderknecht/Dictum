@@ -73,7 +73,7 @@ def generar_pdf(informe: dict, paciente: dict, medico: dict, con_membrete: bool 
 
     pdf = _InformePDF(format="A4")
     # Sin membrete: margen superior de ~4 cm para no superponer el membrete pre-impreso
-    top_margin = 40 if not con_membrete else 14
+    top_margin = 55 if not con_membrete else 14
     pdf.set_margins(left=18, top=top_margin, right=18)
     pdf.set_auto_page_break(auto=True, margin=18)
     pdf.add_page()
