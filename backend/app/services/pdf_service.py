@@ -98,12 +98,12 @@ def generar_pdf(informe: dict, paciente: dict, medico: dict, con_membrete: bool 
 
         y_header = pdf.get_y()
         pdf.set_xy(TEXT_X, y_header)
-        pdf.set_font("Helvetica", "B", 14)
+        pdf.set_font("Helvetica", "B", 13)
         pdf.set_text_color(220, 38, 38)
         pdf.cell(W - LOGO_W - 4, 6, "Instituto de Diagnostico Medico", new_x="LMARGIN", new_y="NEXT")
 
         pdf.set_xy(TEXT_X, pdf.get_y())
-        pdf.set_font("Helvetica", "", 8)
+        pdf.set_font("Helvetica", "", 7)
         pdf.set_text_color(80, 80, 80)
         pdf.cell(W - LOGO_W - 4, 4,
                  "ECOGRAFIA  -  MAMOGRAFIA DIGITAL  -  RADIOLOGIA DIGITAL DIRECTA",
@@ -133,14 +133,14 @@ def generar_pdf(informe: dict, paciente: dict, medico: dict, con_membrete: bool 
     COL = W / 2
 
     def fila(label_l: str, val_l: str, label_r: str = "", val_r: str = "") -> None:
-        pdf.set_font("Arial", "B", 12)
+        pdf.set_font("Arial", "B", 11)
         pdf.cell(len(label_l) * 2.6 + 1, 6.5, _latin1_safe(label_l))
-        pdf.set_font("Arial", "", 12)
+        pdf.set_font("Arial", "", 11)
         pdf.cell(COL - (len(label_l) * 2.6 + 1), 6.5, _latin1_safe(val_l))
         if label_r:
-            pdf.set_font("Arial", "B", 12)
+            pdf.set_font("Arial", "B", 11)
             pdf.cell(len(label_r) * 2.6 + 1, 6.5, _latin1_safe(label_r))
-            pdf.set_font("Arial", "", 12)
+            pdf.set_font("Arial", "", 11)
             pdf.cell(0, 6.5, _latin1_safe(val_r), new_x="LMARGIN", new_y="NEXT")
         else:
             pdf.ln(6.5)
@@ -154,9 +154,9 @@ def generar_pdf(informe: dict, paciente: dict, medico: dict, con_membrete: bool 
     )
 
     tipo_label = _latin1_safe(str(informe.get("tipo_estudio", "") or "")).upper()
-    pdf.set_font("Arial", "B", 12)
+    pdf.set_font("Arial", "B", 11)
     pdf.cell(32, 6.5, "Ecografia: ")
-    pdf.set_font("Arial", "", 12)
+    pdf.set_font("Arial", "", 11)
     pdf.cell(0, 6.5, tipo_label, new_x="LMARGIN", new_y="NEXT")
 
     pdf.ln(2)
@@ -170,7 +170,7 @@ def generar_pdf(informe: dict, paciente: dict, medico: dict, con_membrete: bool 
     # ── CONTENIDO ────────────────────────────────────────────────────────────────
     contenido = (informe.get("contenido") or "").strip()
     if contenido:
-        pdf.set_font("Arial", "", 12)
+        pdf.set_font("Arial", "", 11)
         pdf.set_text_color(20, 20, 20)
         pdf.multi_cell(0, 6, _latin1_safe(contenido), align="L")
         pdf.set_text_color(0, 0, 0)
@@ -182,10 +182,10 @@ def generar_pdf(informe: dict, paciente: dict, medico: dict, con_membrete: bool 
     if medico.get("nombre") or medico.get("apellido"):
         medico_nombre = f"Dr/a. {medico.get('apellido', '')}, {medico.get('nombre', '')}"
         matricula = medico.get("matricula") or ""
-        pdf.set_font("Arial", "", 12)
+        pdf.set_font("Arial", "", 11)
         pdf.cell(0, 6, _latin1_safe(medico_nombre), align="R", new_x="LMARGIN", new_y="NEXT")
         if matricula:
-            pdf.set_font("Arial", "", 11)
+            pdf.set_font("Arial", "", 10)
             pdf.set_text_color(80, 80, 80)
             pdf.cell(0, 5, _latin1_safe(matricula), align="R", new_x="LMARGIN", new_y="NEXT")
             pdf.set_text_color(0, 0, 0)
